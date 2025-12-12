@@ -9,7 +9,7 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_rep
 from fpdf import FPDF
 
 # ==========================================
-# 0. PDF 生成函式 (修正版：自動生成英文建議)
+# 0. PDF 生成函式 (修正：台灣時間)
 # ==========================================
 def create_pdf(user_name, risk_type, prob, factors):
     pdf = FPDF()
@@ -20,10 +20,13 @@ def create_pdf(user_name, risk_type, prob, factors):
     pdf.cell(200, 10, txt="Alzheimer's Risk Assessment Report", ln=1, align='C')
     pdf.ln(10)
     
-    # 基本資料 (強制轉為英文格式)
+    # [修正] 取得台灣時間 (UTC + 8小時)
+    tw_time = pd.Timestamp.now() + pd.Timedelta(hours=8)
+    
+    # 基本資料
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"User ID: {user_name}", ln=1)
-    pdf.cell(200, 10, txt=f"Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}", ln=1)
+    pdf.cell(200, 10, txt=f"Date: {tw_time.strftime('%Y-%m-%d %H:%M')}", ln=1) # 顯示到分鐘
     pdf.ln(5)
     
     # 風險評估結果
@@ -37,11 +40,10 @@ def create_pdf(user_name, risk_type, prob, factors):
     pdf.cell(200, 10, txt="Key Risk Factors:", ln=1)
     pdf.set_font("Arial", size=11)
     for key, value in factors.items():
-        # 確保 key/value 都是字串且無特殊符號
         pdf.cell(200, 8, txt=f"- {str(key)}: {str(value)}", ln=1)
     pdf.ln(10)
     
-    # 醫療建議 (自動對應英文，避免中文亂碼)
+    # 醫療建議 (英文)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Medical Recommendations:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -55,7 +57,6 @@ def create_pdf(user_name, risk_type, prob, factors):
     
     pdf.multi_cell(0, 8, txt=advice_text)
     
-    # 輸出
     return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
@@ -150,14 +151,12 @@ elif app_mode == "🥗 生活雷達篩檢":
         btn_run = st.button("生成分析報告")
 
     if btn_run:
-        # 1. 預測邏輯
         input_data = [[max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]]
         prob = model_l.predict_proba(input_data)[0][1]
         if l_fam == "有": prob = min(0.99, prob * 1.3)
         if l_age < 60: prob *= 0.7
         
         with c2:
-            # 2. 繪製雷達圖
             cat = ['Sleep', 'Diet', 'Exercise', 'Memory', 'ADL']
             vals = [l_sleep/10, l_diet/10, l_act/10, l_func/10, l_adl/10]
             vals += vals[:1]; ang = np.linspace(0, 2*np.pi, 5, endpoint=False).tolist(); ang += ang[:1]
@@ -165,7 +164,6 @@ elif app_mode == "🥗 生活雷達篩檢":
             ax.fill(ang, vals, color='#0068C9', alpha=0.3); ax.plot(ang, vals, color='#0068C9')
             ax.set_xticks(ang[:-1]); ax.set_xticklabels(cat); st.pyplot(fig)
             
-            # 3. 顯示結果
             risk_lvl = "High" if prob > 0.6 else ("Moderate" if prob > 0.3 else "Low")
             st.metric("預測風險機率", f"{prob:.1%}")
             
@@ -173,7 +171,7 @@ elif app_mode == "🥗 生活雷達篩檢":
             elif risk_lvl == "Moderate": st.warning("🟡 中風險")
             else: st.success("🟢 低風險")
             
-            # PDF 下載 (注意：這裡不傳 advice，改由 create_pdf 內部生成英文 advice)
+            # PDF 下載 (User ID 自動代入 User_年齡)
             pdf_bytes = create_pdf(
                 user_name=f"User_{l_age}", 
                 risk_type=risk_lvl, 
@@ -195,13 +193,10 @@ elif app_mode == "🏥 臨床落點分析":
     if btn_c:
         input_c = [[0, c_age, c_educ, 2, c_etiv, c_nwbv]]
         prob_c = model_c.predict_proba(input_c)[0][1]
-        
-        # 基因加權
         if "High" in c_apoe: prob_c = min(0.99, prob_c * 1.5)
         elif "Positive" in c_apoe: prob_c = min(0.99, prob_c * 1.2)
         
         with c2:
-            # 落點圖
             fig, ax = plt.subplots(figsize=(8, 5))
             sns.scatterplot(data=df_oasis, x='Age', y='nWBV', hue='CDR', palette='coolwarm', alpha=0.3, ax=ax)
             ax.scatter(c_age, c_nwbv, color='red', s=250, marker='*', label='You Are Here', edgecolors='black')
@@ -220,13 +215,12 @@ elif app_mode == "📊 數據驗證中心":
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(5,3))
         ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}'); ax.plot([0,1],[0,1],'--'); ax.legend(); st.pyplot(fig)
     with tab3:
-        st.markdown("#### 🏥 OASIS 臨床數據 (OASIS Analytics)")
+        st.markdown("#### 🏥 OASIS 臨床數據")
         c1, c2, c3 = st.columns(3)
         with c1: st.image("scatter_CDR_color.png", caption="Age vs MMSE", use_container_width=True)
         with c2: st.image("heatmap_new.png", caption="Correlation Heatmap", use_container_width=True)
         with c3: st.image("feature_importance_new.png", caption="Clinical Importance", use_container_width=True)
-        
-        st.markdown("#### 🥗 Kaggle 生活數據 (Lifestyle Analytics)")
+        st.markdown("#### 🥗 Kaggle 生活數據")
         c4, c5, c6 = st.columns(3)
         with c4: st.image("csv3_scatter.png", caption="Lifestyle Scatter", use_container_width=True)
         with c5: st.image("csv3_heatmap.png", caption="Risk Factor Heatmap", use_container_width=True)
