@@ -123,7 +123,7 @@ model_l, test_l, model_c, test_c, df_oasis = load_all()
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center;'>AD-AI Pro v3.6</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center;'>AD-AI Pro v3.8</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
 st.sidebar.markdown("---")
@@ -163,17 +163,25 @@ elif app_mode == "🥗 生活雷達篩檢":
     c1, c2 = st.columns([1, 2])
     with c1:
         st.subheader("📝 輸入資料")
-        l_age = st.slider("年齡", 40, 95, 65); l_gen = st.selectbox("性別", ["男", "女"])
-        l_bmi = st.slider("BMI", 15.0, 35.0, 24.0); l_fam = st.radio("家族病史", ["無", "有"])
-        l_sleep = st.slider("睡眠品質 (0-10)", 0, 10, 7); l_diet = st.slider("飲食品質 (0-10)", 0, 10, 7)
-        l_act = st.slider("運動頻率 (0-10)", 0, 10, 5); l_func = st.slider("記憶自評 (0-10)", 0.0, 10.0, 8.0)
+        l_age = st.slider("年齡", 40, 95, 65)
+        l_gen = st.selectbox("性別", ["男", "女"])
+        l_bmi = st.slider("BMI", 15.0, 35.0, 24.0)
+        l_fam = st.radio("家族病史", ["無", "有"])
+        l_sleep = st.slider("睡眠品質 (0-10)", 0, 10, 7)
+        l_diet = st.slider("飲食品質 (0-10)", 0, 10, 7)
+        l_act = st.slider("運動頻率 (0-10)", 0, 10, 5)
+        l_func = st.slider("記憶自評 (0-10)", 0.0, 10.0, 8.0)
         l_adl = st.slider("自理能力 (0-10)", 0.0, 10.0, 10.0)
         btn_run = st.button("生成分析報告")
 
     if btn_run:
+        # [預測邏輯]
         input_data = [[max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]]
         prob = model_l.predict_proba(input_data)[0][1]
+        
+        # [專家加權]
         if l_fam == "有": prob = min(0.99, prob * 1.3)
+        if l_gen == "女": prob = min(0.99, prob * 1.1)
         if l_age < 60: prob *= 0.7
         
         with c2:
@@ -195,11 +203,11 @@ elif app_mode == "🥗 生活雷達篩檢":
             
             pdf_bytes = create_pdf(
                 user_name=f"User_{l_age}", risk_type=risk_lvl, prob=prob, 
-                factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act}
+                factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": l_fam}
             )
             st.download_button("📥 下載 PDF 評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
 
-# --- PAGE 3: 臨床落點 ---
+# --- PAGE 3: 臨床落點 (已修正：加入性別與SES選擇) ---
 elif app_mode == "🏥 臨床落點分析":
     st.title("🏥 臨床影像定位分析")
     st.markdown("輸入 MRI 影像數值，分析您在同齡族群中的腦萎縮程度落點。")
@@ -208,14 +216,26 @@ elif app_mode == "🏥 臨床落點分析":
     c1, c2 = st.columns([1, 2])
     with c1:
         st.subheader("🧠 影像數據")
-        c_age = st.number_input("年齡", 60, 95, 75); c_nwbv = st.slider("nWBV (腦體積比)", 0.65, 0.85, 0.75, 0.001)
-        c_etiv = st.number_input("eTIV (顱內容量)", 1100, 2000, 1450); c_educ = st.number_input("教育年數", 0, 25, 12)
+        c_age = st.number_input("年齡", 60, 95, 75)
+        # [修正] 補回性別與 SES 選單
+        c_gen = st.selectbox("性別", ["Male", "Female"]) 
+        c_ses = st.selectbox("社經地位 (SES)", [1,2,3,4,5], index=1, help="1為最高，5為最低")
+        
+        c_educ = st.number_input("教育年數", 0, 25, 12)
+        c_nwbv = st.slider("nWBV (腦體積比)", 0.65, 0.85, 0.75, 0.001)
+        c_etiv = st.number_input("eTIV (顱內容量)", 1100, 2000, 1450)
         c_apoe = st.selectbox("ApoE4 基因型 (加權)", ["Negative", "Positive (e3/e4)", "High Risk (e4/e4)"])
         btn_c = st.button("執行臨床落點分析")
 
     if btn_c:
-        input_c = [[0, c_age, c_educ, 2, c_etiv, c_nwbv]]
+        # [修正] 根據訓練時的邏輯：Female=1, Male=0
+        g_val = 1 if c_gen == "Female" else 0
+        
+        # 輸入順序必須對齊模型: [M/F, Age, EDUC, SES, eTIV, nWBV]
+        input_c = [[g_val, c_age, c_educ, c_ses, c_etiv, c_nwbv]]
         prob_c = model_c.predict_proba(input_c)[0][1]
+        
+        # 基因加權
         if "High" in c_apoe: prob_c = min(0.99, prob_c * 1.5)
         elif "Positive" in c_apoe: prob_c = min(0.99, prob_c * 1.2)
         
@@ -226,6 +246,10 @@ elif app_mode == "🏥 臨床落點分析":
             ax.scatter(c_age, c_nwbv, color='red', s=250, marker='*', label='You Are Here', edgecolors='black')
             ax.set_title("OASIS Population Comparison"); ax.legend(); st.pyplot(fig)
             st.metric("影像分析風險機率", f"{prob_c:.1%}")
+            if prob_c > 0.5:
+                st.error("🔴 腦部萎縮警示：建議進行認知測驗。")
+            else:
+                st.success("🟢 腦容量正常：位於健康範圍。")
 
 # --- PAGE 4: 數據驗證 (已修復大標題) ---
 elif app_mode == "📊 數據驗證中心":
