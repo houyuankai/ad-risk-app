@@ -9,7 +9,7 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_rep
 from fpdf import FPDF
 
 # ==========================================
-# 0. PDF 生成函式 (修復編碼報錯問題)
+# 0. PDF 生成函式 (修正版：自動生成英文建議)
 # ==========================================
 def create_pdf(user_name, risk_type, prob, factors):
     pdf = FPDF()
@@ -20,12 +20,13 @@ def create_pdf(user_name, risk_type, prob, factors):
     pdf.cell(200, 10, txt="Alzheimer's Risk Assessment Report", ln=1, align='C')
     pdf.ln(10)
     
-    # 基本資料 (轉換為純英文避免 Latin-1 報錯)
+    # 基本資料 (強制轉為英文格式)
     pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=f"Assessed Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}", ln=1)
+    pdf.cell(200, 10, txt=f"User ID: {user_name}", ln=1)
+    pdf.cell(200, 10, txt=f"Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}", ln=1)
     pdf.ln(5)
     
-    # 風項評估結果
+    # 風險評估結果
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(200, 10, txt=f"Risk Level: {risk_type}", ln=1)
     pdf.cell(200, 10, txt=f"Probability: {prob:.1%}", ln=1)
@@ -33,29 +34,29 @@ def create_pdf(user_name, risk_type, prob, factors):
     
     # 詳細因子
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, txt="Key Metrics Summary:", ln=1)
+    pdf.cell(200, 10, txt="Key Risk Factors:", ln=1)
     pdf.set_font("Arial", size=11)
     for key, value in factors.items():
-        # 確保 key 和 value 都是純英文/數字
-        pdf.cell(200, 8, txt=f"- {key}: {value}", ln=1)
+        # 確保 key/value 都是字串且無特殊符號
+        pdf.cell(200, 8, txt=f"- {str(key)}: {str(value)}", ln=1)
     pdf.ln(10)
     
-    # 醫療建議 (根據風險等級對應英文建議)
+    # 醫療建議 (自動對應英文，避免中文亂碼)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, txt="Medical Advice:", ln=1)
+    pdf.cell(200, 10, txt="Medical Recommendations:", ln=1)
     pdf.set_font("Arial", size=11)
     
     if risk_type == "High":
-        advice_text = "High risk detected. Immediate consultation with a neurologist and clinical evaluation is strongly recommended."
+        advice_text = "High risk detected. Immediate clinical consultation with a neurologist is recommended."
     elif risk_type == "Moderate":
-        advice_text = "Moderate risk detected. Recommendation: Improve lifestyle, monitor sleep quality, and conduct a follow-up assessment in 6 months."
+        advice_text = "Moderate risk detected. Please improve sleep quality, maintain a healthy diet, and monitor regularly."
     else:
-        advice_text = "Low risk detected. Please maintain a healthy lifestyle and perform regular cognitive check-ups."
+        advice_text = "Low risk detected. Continue maintaining a healthy lifestyle and regular exercise."
     
     pdf.multi_cell(0, 8, txt=advice_text)
     
-    # 輸出 (不手動 encode 為 latin-1，由 fpdf 處理)
-    return pdf.output(dest='S')
+    # 輸出
+    return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
 # 1. 頁面配置 & CSS
@@ -111,7 +112,7 @@ model_l, test_l, model_c, test_c, df_oasis = load_all()
 # ==========================================
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
-st.sidebar.markdown("### 🧠 AD-AI Pro v3.3")
+st.sidebar.markdown("### 🧠 AD-AI Pro v3.4")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
 st.sidebar.divider()
 st.sidebar.caption("Designed by\nNYCU MED Project Team")
@@ -122,7 +123,7 @@ st.sidebar.caption("Designed by\nNYCU MED Project Team")
 
 # --- PAGE 1: 首頁 ---
 if app_mode == "🏠 系統首頁":
-    st.title("阿茲海默症智慧診斷系統")
+    st.title("阿茲海默症雙軌風險評估系統")
     col1, col2 = st.columns(2)
     with col1:
         st.info("👋 **整合臨床影像與生活型態數據的 AI 篩檢工具**")
@@ -172,9 +173,9 @@ elif app_mode == "🥗 生活雷達篩檢":
             elif risk_lvl == "Moderate": st.warning("🟡 中風險")
             else: st.success("🟢 低風險")
             
-            # PDF 下載
+            # PDF 下載 (注意：這裡不傳 advice，改由 create_pdf 內部生成英文 advice)
             pdf_bytes = create_pdf(
-                user_name="User_101", 
+                user_name=f"User_{l_age}", 
                 risk_type=risk_lvl, 
                 prob=prob, 
                 factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act}
@@ -192,7 +193,6 @@ elif app_mode == "🏥 臨床落點分析":
         btn_c = st.button("執行臨床落點分析")
 
     if btn_c:
-        # [M/F, Age, EDUC, SES, eTIV, nWBV]
         input_c = [[0, c_age, c_educ, 2, c_etiv, c_nwbv]]
         prob_c = model_c.predict_proba(input_c)[0][1]
         
@@ -220,14 +220,14 @@ elif app_mode == "📊 數據驗證中心":
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(5,3))
         ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}'); ax.plot([0,1],[0,1],'--'); ax.legend(); st.pyplot(fig)
     with tab3:
-        st.markdown("#### 🏥 OASIS 臨床數據 (OASIS Analytics)")
+        st.markdown("#### 🏥 OASIS 臨床數據")
         c1, c2, c3 = st.columns(3)
         with c1: st.image("scatter_CDR_color.png", caption="Age vs MMSE", use_container_width=True)
         with c2: st.image("heatmap_new.png", caption="Correlation Heatmap", use_container_width=True)
         with c3: st.image("feature_importance_new.png", caption="Clinical Importance", use_container_width=True)
         
-        st.markdown("#### 🥗 Kaggle 生活數據 (Lifestyle Analytics)")
+        st.markdown("#### 🥗 Kaggle 生活數據")
         c4, c5, c6 = st.columns(3)
         with c4: st.image("csv3_scatter.png", caption="Lifestyle Scatter", use_container_width=True)
         with c5: st.image("csv3_heatmap.png", caption="Risk Factor Heatmap", use_container_width=True)
-        with c6: st.image("csv3_bar.png", caption="Feature Importance", use_container_width=True)
+        with c6: st.image("csv3_bar.png", caption="Feature Importance", use_container_width=True)rtance", use_container_width=True)
