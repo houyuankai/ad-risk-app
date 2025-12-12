@@ -40,7 +40,10 @@ def create_pdf(user_name, risk_type, prob, factors):
     pdf.cell(200, 10, txt="Key Risk Factors:", ln=1)
     pdf.set_font("Arial", size=11)
     for key, value in factors.items():
-        pdf.cell(200, 8, txt=f"- {str(key)}: {str(value)}", ln=1)
+        # 確保內容轉為字串並移除潛在的非 ASCII 字符
+        safe_key = str(key).encode('ascii', 'ignore').decode('ascii')
+        safe_val = str(value).encode('ascii', 'ignore').decode('ascii')
+        pdf.cell(200, 8, txt=f"- {safe_key}: {safe_val}", ln=1)
     pdf.ln(10)
     
     # 醫療建議
@@ -123,7 +126,7 @@ model_l, test_l, model_c, test_c, df_oasis = load_all()
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center;'>AD-AI Pro v3.8</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center;'>AD-AI Pro v3.9</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
 st.sidebar.markdown("---")
@@ -201,13 +204,18 @@ elif app_mode == "🥗 生活雷達篩檢":
             elif risk_lvl == "Moderate": st.warning("🟡 中風險：建議改善生活習慣。")
             else: st.success("🟢 低風險：請繼續保持。")
             
+            # [修正 PDF 報錯] 將中文轉換為英文再傳入 create_pdf
+            fam_eng = "Yes" if l_fam == "有" else "No"
+            
             pdf_bytes = create_pdf(
-                user_name=f"User_{l_age}", risk_type=risk_lvl, prob=prob, 
-                factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": l_fam}
+                user_name=f"User_{l_age}", 
+                risk_type=risk_lvl, 
+                prob=prob, 
+                factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": fam_eng}
             )
             st.download_button("📥 下載 PDF 評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
 
-# --- PAGE 3: 臨床落點 (已修正：加入性別與SES選擇) ---
+# --- PAGE 3: 臨床落點 (文案優化) ---
 elif app_mode == "🏥 臨床落點分析":
     st.title("🏥 臨床影像定位分析")
     st.markdown("輸入 MRI 影像數值，分析您在同齡族群中的腦萎縮程度落點。")
@@ -217,7 +225,6 @@ elif app_mode == "🏥 臨床落點分析":
     with c1:
         st.subheader("🧠 影像數據")
         c_age = st.number_input("年齡", 60, 95, 75)
-        # [修正] 補回性別與 SES 選單
         c_gen = st.selectbox("性別", ["Male", "Female"]) 
         c_ses = st.selectbox("社經地位 (SES)", [1,2,3,4,5], index=1, help="1為最高，5為最低")
         
@@ -228,10 +235,7 @@ elif app_mode == "🏥 臨床落點分析":
         btn_c = st.button("執行臨床落點分析")
 
     if btn_c:
-        # [修正] 根據訓練時的邏輯：Female=1, Male=0
         g_val = 1 if c_gen == "Female" else 0
-        
-        # 輸入順序必須對齊模型: [M/F, Age, EDUC, SES, eTIV, nWBV]
         input_c = [[g_val, c_age, c_educ, c_ses, c_etiv, c_nwbv]]
         prob_c = model_c.predict_proba(input_c)[0][1]
         
@@ -245,11 +249,16 @@ elif app_mode == "🏥 臨床落點分析":
             sns.scatterplot(data=df_oasis, x='Age', y='nWBV', hue='CDR', palette='coolwarm', alpha=0.3, ax=ax)
             ax.scatter(c_age, c_nwbv, color='red', s=250, marker='*', label='You Are Here', edgecolors='black')
             ax.set_title("OASIS Population Comparison"); ax.legend(); st.pyplot(fig)
+            
             st.metric("影像分析風險機率", f"{prob_c:.1%}")
+            
+            # [文案優化] 強調 AD 風險
             if prob_c > 0.5:
-                st.error("🔴 腦部萎縮警示：建議進行認知測驗。")
+                st.error("🔴 高度疑似阿茲海默症病變 (腦萎縮顯著)")
+                st.write("根據 nWBV 與年齡落點，您的腦容量顯著低於同齡平均，顯示高度 AD 風險。")
             else:
-                st.success("🟢 腦容量正常：位於健康範圍。")
+                st.success("🟢 目前無明顯阿茲海默症特徵 (腦容量正常)")
+                st.write("您的腦部體積落在同齡層的健康範圍內。")
 
 # --- PAGE 4: 數據驗證 (已修復大標題) ---
 elif app_mode == "📊 數據驗證中心":
