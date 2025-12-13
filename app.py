@@ -146,7 +146,7 @@ with st.sidebar.expander("⚠️ 免責聲明 (Disclaimer)"):
     本系統為學術專題研究原型 (Prototype)。
     - **生活數據**：使用 Kaggle 合成數據集，僅供模型驗證。
     - **臨床數據**：使用 OASIS 公開數據集。
-    - **結果用途**：僅供教學與研究參考，**非醫療診斷依據**。若有健康疑慮，請務必諮詢專業醫師。
+    - **結果用途**：僅供教學與研究參考，**非醫療診斷依據**。
     """)
 
 st.sidebar.caption("Designed by NYCU MED Project Team")
