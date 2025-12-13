@@ -14,28 +14,21 @@ from fpdf import FPDF
 def create_pdf(user_name, risk_type, prob, factors):
     pdf = FPDF()
     pdf.add_page()
-    
-    # 標題
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt="Alzheimer's Risk Assessment Report", ln=1, align='C')
     pdf.ln(10)
     
-    # 時間 (台灣時區)
     tw_time = pd.Timestamp.now() + pd.Timedelta(hours=8)
-    
-    # 基本資料
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"User ID: {user_name}", ln=1)
     pdf.cell(200, 10, txt=f"Date: {tw_time.strftime('%Y-%m-%d %H:%M')}", ln=1)
     pdf.ln(5)
     
-    # 風險評估
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(200, 10, txt=f"Risk Level: {risk_type}", ln=1)
     pdf.cell(200, 10, txt=f"Probability: {prob:.1%}", ln=1)
     pdf.ln(5)
     
-    # 詳細因子
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Key Risk Factors:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -43,7 +36,6 @@ def create_pdf(user_name, risk_type, prob, factors):
         pdf.cell(200, 8, txt=f"- {str(key)}: {str(value)}", ln=1)
     pdf.ln(10)
     
-    # 醫療建議
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Medical Advice:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -56,7 +48,6 @@ def create_pdf(user_name, risk_type, prob, factors):
         advice_text = "Low risk detected. Continue maintaining a healthy lifestyle and regular exercise."
     
     pdf.multi_cell(0, 8, txt=advice_text)
-    
     return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
@@ -66,56 +57,25 @@ st.set_page_config(page_title="AD Risk AI Pro", page_icon="🧠", layout="wide")
 
 st.markdown("""
     <style>
-    /* 全站背景：純白 */
-    .stApp {
-        background-color: #FFFFFF;
-    }
-    
-    /* 標題與文字：深藍色 */
-    h1, h2, h3 {
-        color: #0056b3; 
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    }
-    
-    /* 側邊欄：淺藍灰背景 */
-    [data-testid="stSidebar"] {
-        background-color: #F0F4F8;
-        border-right: 1px solid #D1D9E6;
-    }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #2C3E50;
-    }
-    
-    /* 按鈕樣式：亮藍色漸層 */
+    .main {background-color: #FFFFFF;}
+    h1, h2, h3 {color: #0056b3; font-family: 'Helvetica Neue', sans-serif;}
     .stButton>button {
-        color: white; 
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-        border: none; 
-        border-radius: 8px; 
-        padding: 12px 24px; 
-        width: 100%;
-        font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: 0.2s;
+        color: white; background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none; border-radius: 8px; padding: 12px 24px; width: 100%; font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;
     }
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
+    .stButton>button:hover {transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2);}
+    [data-testid="stSidebar"] {background-color: #F0F4F8; border-right: 1px solid #D1D9E6;}
+    .stChatMessage {background-color: #F8F9FA; border: 1px solid #E9ECEF; border-radius: 12px; padding: 15px; margin-bottom: 10px;}
+    [data-testid="stSidebar"] img {display: block; margin-left: auto; margin-right: auto; border-radius: 50%; border: 3px solid #007bff;}
     
-    /* Chatbot 對話框 */
-    .stChatMessage {
-        background-color: #F8F9FA;
-        border: 1px solid #E9ECEF;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 10px;
-    }
-    
-    /* 圖片圓框 */
-    [data-testid="stSidebar"] img {
-        display: block; margin-left: auto; margin-right: auto; 
-        border-radius: 50%; border: 3px solid #007bff;
+    /* 新增：解釋區塊樣式 */
+    .explanation-box {
+        background-color: #e8f4fd; 
+        border-left: 5px solid #007bff; 
+        padding: 15px; 
+        border-radius: 5px;
+        margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -125,14 +85,14 @@ st.markdown("""
 # ==========================================
 @st.cache_resource
 def load_all():
-    # --- A. 生活型態模型 ---
+    # 生活模型
     df_l = pd.read_csv('alzheimers_disease_data.csv')
     feat_l = ['Age', 'BMI', 'SleepQuality', 'PhysicalActivity', 'DietQuality', 'FamilyHistoryAlzheimers', 'SystolicBP', 'FunctionalAssessment', 'ADL']
     X_l = df_l[feat_l]; y_l = df_l['Diagnosis']
     X_train_l, X_test_l, y_train_l, y_test_l = train_test_split(X_l, y_l, test_size=0.2, random_state=42)
     clf_l = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_l, y_train_l)
     
-    # --- B. 臨床精準模型 ---
+    # 臨床模型
     df_c_raw = pd.read_csv('oasis_cross-sectional.csv').rename(columns={'Educ': 'EDUC'})
     df_long_raw = pd.read_csv('oasis_longitudinal.csv')
     df_long_raw = df_long_raw[df_long_raw['Visit'] == 1]
@@ -146,17 +106,17 @@ def load_all():
     X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(X_c, y_c, test_size=0.2, random_state=42)
     clf_c = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_c, y_train_c)
     
-    return clf_l, (X_test_l, y_test_l), clf_c, (X_test_c, y_test_c), df_oasis
+    return clf_l, (X_test_l, y_test_l), clf_c, (X_test_c, y_test_c), df_oasis, df_l
 
-model_l, test_l, model_c, test_c, df_oasis = load_all()
+model_l, test_l, model_c, test_c, df_oasis, df_life_raw = load_all()
 
 # ==========================================
-# 3. 側邊欄與 Logo
+# 3. 側邊欄
 # ==========================================
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v5.3</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v6.0</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
 st.sidebar.markdown("---")
@@ -174,25 +134,27 @@ if app_mode == "🏠 系統首頁":
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.info("👋 **歡迎使用 v5.3 專業版！**")
+        st.info("👋 **歡迎使用 v6.0 深度解析版！**")
         st.markdown("""
-        **系統五大核心功能：**
+        **系統關鍵字導覽：**
+        - **🔍 網站操作**：點擊左上角「>」展開側邊欄選單切換功能。
+        - **🤖 功能介紹**：包含 AI 問答、生活習慣分析、MRI 影像判讀。
+        - **📄 報告生成**：支援一鍵下載 PDF 醫師參考報告。
+        
+        **五大核心模組：**
         1. **🤖 AI 諮詢**：提供就醫指引、費用諮詢與衛教問答。
-        2. **🥗 生活雷達**：視覺化睡眠、飲食與運動的綜合影響。
-        3. **🏥 臨床落點**：基於 OASIS 數據庫定位腦部萎縮風險。
-        4. **📄 專業報告**：一鍵下載 PDF 評估報告。
-        5. **📊 數據實證**：公開 ROC 曲線與混淆矩陣，驗證模型效能。
+        2. **🥗 生活雷達**：五維度分析（睡眠/飲食/運動/記憶/自理）。
+        3. **🏥 臨床落點**：nWBV 腦萎縮程度定位與基因加權。
+        4. **📊 數據實證**：ROC 曲線與模型效能驗證。
         """)
-        st.success("👉 **操作指引**：請點擊左上角的 **「>」** 符號展開側邊欄選單，即可切換不同功能頁面。")
     with col2:
-        try: st.image("brain_compare.png", use_container_width=True, caption="Healthy Brain vs AD Brain")
+        try: st.image("brain_compare.png", use_container_width=True, caption="Healthy Brain (Left) vs AD Brain (Right)")
         except: st.warning("請確保 brain_compare.png 已上傳")
 
-# --- PAGE 2: AI Chatbot (文字修訂版) ---
+# --- PAGE 2: AI Chatbot ---
 elif app_mode == "🤖 AI 衛教諮詢":
     st.title("🤖 AI 衛教諮詢助手")
-    # [修改] 提示文字更新
-    st.info("💡 提示：您可以問我關於「阿茲海默症」的相關問題，例如症狀、預防、治療或就醫資訊。")
+    st.info("💡 提示：您可以問我關於「阿茲海默症」的相關問題，例如症狀、預防、治療、就醫資訊或網站操作方法。")
     
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "您好！我是您的健康管家。請問今天有什麼我可以幫您的嗎？"}]
@@ -205,41 +167,34 @@ elif app_mode == "🤖 AI 衛教諮詢":
         st.chat_message("user").markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # 智慧關鍵字邏輯
         q = prompt.lower()
-        if any(x in q for x in ["阿茲海默", "失智", "老人痴呆", "什麼是"]):
-            reply = "🧠 **疾病簡介**：\n阿茲海默症 (Alzheimer's Disease) 是一種大腦神經退化性疾病，也是最常見的失智症類型。成因與大腦內異常蛋白質堆積（β-類澱粉蛋白斑塊、Tau 蛋白纏結）有關，導致神經細胞死亡，影響記憶、認知與語言能力。早期症狀通常是近期記憶力衰退，逐漸影響到判斷力與日常生活。"
+        if any(x in q for x in ["操作", "怎麼用", "功能", "教學"]):
+            reply = "🛠️ **網站操作指南**：\n請點擊左上角的 **「>」符號** 展開側邊欄選單，您會看到以下功能：\n1. **生活雷達篩檢**：輸入您的日常習慣，評估風險。\n2. **臨床落點分析**：輸入 MRI 數據，查看腦部健康落點。\n3. **數據驗證中心**：查看本系統的準確度數據。"
+        elif any(x in q for x in ["阿茲海默", "失智", "老人痴呆", "什麼是"]):
+            reply = "🧠 **疾病簡介**：\n阿茲海默症 (Alzheimer's Disease) 是一種不可逆的大腦神經退化疾病。主要病理特徵為大腦內 **β-類澱粉蛋白斑塊** 堆積與 **Tau 蛋白纏結**，導致神經元死亡與腦部萎縮 (Brain Atrophy)。"
         elif any(x in q for x in ["飲食", "吃", "營養", "食物"]):
-            reply = "🥗 **飲食建議 (MIND 飲食法)**：\n研究證實 MIND 飲食可降低失智風險。建議多攝取：\n- **綠色蔬菜**（菠菜、羽衣甘藍）\n- **堅果與莓果類**（藍莓、草莓）\n- **全穀類與豆類**\n- **家禽與魚類**\n同時應減少紅肉、奶油、起司、甜點與油炸食品的攝取。"
+            reply = "🥗 **飲食建議 (MIND Diet)**：\n研究證實 MIND 飲食可降低失智風險。建議多攝取：\n- **綠色蔬菜**、**堅果**、**莓果類**、**全穀類**、**魚類**。\n- 應避免：紅肉、奶油、起司、甜點、油炸食品。"
         elif any(x in q for x in ["運動", "跑步", "活動"]):
-            reply = "🏃 **運動處方**：\n建議每週至少進行 150 分鐘的中等強度有氧運動（如快走、游泳、騎單車、太極拳）。規律運動能促進腦源性神經滋養因子 (BDNF) 分泌，增加大腦血流量，有助於延緩腦部退化並改善情緒。"
+            reply = "🏃 **運動處方**：\n建議每週至少 150 分鐘中等強度有氧運動。運動能促進 **BDNF (腦源性神經滋養因子)** 分泌，增加海馬迴體積，增強記憶力。"
         elif any(x in q for x in ["睡眠", "睡覺", "失眠"]):
-            reply = "😴 **睡眠與大腦排毒**：\n睡眠期間大腦會啟動「膠淋巴系統 (Glymphatic System)」清除 β-類澱粉蛋白等代謝廢物。長期睡眠不足（每晚少於 6 小時）會增加失智風險。建議維持固定作息，睡前避免使用手機，並確保每晚 7-8 小時的高品質睡眠。"
+            reply = "😴 **睡眠與大腦排毒**：\n大腦在睡眠時會啟動 **「膠淋巴系統 (Glymphatic System)」** 清除代謝廢物。長期睡眠不足會導致毒素堆積，增加失智風險。建議每晚睡滿 7-8 小時。"
         elif any(x in q for x in ["診所", "掛號", "看醫生", "醫院", "科別"]):
-            reply = "🏥 **就醫指引**：\n若您或家人出現疑似失智症狀，建議優先掛 **「神經內科」** 或 **「身心科 (精神科)」**。目前台灣各大醫院皆設有「記憶門診」或「失智症中心」，由專業團隊提供完整的評估與照護計畫。"
-        elif any(x in q for x in ["檢查", "檢測", "評估", "測驗"]):
-            reply = "🩺 **常見檢查項目**：\n1. **臨床問診**：醫師評估病史與家族史。\n2. **認知功能測驗**：如 MMSE (簡易智能量表) 或 MoCA (蒙特利爾認知評估)。\n3. **血液檢查**：排除維生素 B12 缺乏、甲狀腺功能異常等可逆因子。\n4. **腦部影像**：MRI 或 CT 檢查腦萎縮情形或排除腦腫瘤。"
+            reply = "🏥 **就醫指引**：\n建議掛 **「神經內科」** 或 **「身心科」**。各大醫學中心皆設有「記憶門診」，可提供認知測驗 (MMSE) 與腦部影像檢查 (MRI)。"
         elif any(x in q for x in ["費用", "錢", "健保", "自費"]):
-            reply = "💰 **費用資訊**：\n- **健保給付**：大部分的門診診察、認知功能測驗與標準 MRI 影像檢查皆有健保給付。\n- **自費項目**：部分高階影像檢查（如類澱粉蛋白 PET 掃描）或特殊的基因檢測可能需要自費，費用依醫院而異，建議直接諮詢主治醫師。"
-        elif any(x in q for x in ["保險", "理賠"]):
-            reply = "📄 **保險資訊**：\n若您有投保「重大疾病險」或「長期照顧險 (長照險)」，確診失智症後通常可申請理賠。建議您檢視保單條款中的「除外責任」與「理賠定義」，確認是否包含「阿茲海默症」或「重度認知功能障礙」。"
-        elif any(x in q for x in ["治療", "藥物", "會好嗎", "痊癒"]):
-            reply = "💊 **治療現況**：\n目前阿茲海默症尚無法「完全治癒」，但透過藥物治療（如乙醯膽鹼酯酶抑制劑）可以有效延緩症狀惡化，改善病人的生活品質。早期發現並搭配非藥物治療（如認知訓練、懷舊治療、音樂治療）效果更佳。"
-        elif any(x in q for x in ["預防", "避免"]):
-            reply = "🛡️ **趨吉避凶原則**：\n- **趨吉**：多動腦（學習新知）、多運動、多社交（參與社區活動）、均衡飲食。\n- **避凶**：控制三高（高血壓/高血脂/高血糖）、避免頭部外傷、戒菸、治療憂鬱症。"
-        elif any(x in q for x in ["你好", "嗨", "早安", "謝謝", "hello", "hi"]):
-            reply = "😊 您好！很高興能為您服務。保持心情愉快、多與人互動也是維持大腦健康的重要秘訣喔！如果還有其他問題，歡迎隨時問我。"
+            reply = "💰 **費用資訊**：\n健保給付大部分的門診與基本檢查。高階自費項目如 **類澱粉蛋白 PET 掃描** 可能需數萬元，建議諮詢主治醫師。"
+        elif any(x in q for x in ["你好", "嗨", "早安", "謝謝"]):
+            reply = "😊 您好！很高興能為您服務。若有任何關於大腦健康的問題，歡迎隨時提問！"
         else:
-            reply = "抱歉，我的資料庫目前主要涵蓋「疾病介紹、飲食、運動、睡眠、就醫、費用、預防」等主題。您可以試著問得更具體一點，例如：「怎麼吃比較好？」或「要去哪裡看醫生？」"
+            reply = "抱歉，我可以回答關於「疾病介紹、飲食、運動、睡眠、就醫、費用、網站操作」等問題。請試著問：「這個網站怎麼用？」或「要去哪裡看醫生？」"
 
         with st.chat_message("assistant"):
             st.markdown(reply)
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
-# --- PAGE 3: 生活篩檢 ---
+# --- PAGE 3: 生活篩檢 (新增群體比較圖) ---
 elif app_mode == "🥗 生活雷達篩檢":
     st.title("🥗 生活型態風險評估")
-    st.markdown("請輸入您的生活習慣數據，系統將為您生成五維健康雷達圖。")
+    st.markdown("輸入您的生活習慣，系統將生成雷達圖，並將您的數據與資料庫常模進行比較。")
     st.divider()
     
     c1, c2 = st.columns([1, 2])
@@ -250,7 +205,7 @@ elif app_mode == "🥗 生活雷達篩檢":
         l_sleep = st.slider("睡眠品質 (0-10)", 0, 10, 7); l_diet = st.slider("飲食品質 (0-10)", 0, 10, 7)
         l_act = st.slider("運動頻率 (0-10)", 0, 10, 5); l_func = st.slider("記憶自評 (0-10)", 0.0, 10.0, 8.0)
         l_adl = st.slider("自理能力 (0-10)", 0.0, 10.0, 10.0)
-        btn_run = st.button("生成分析報告")
+        btn_run = st.button("生成深度分析報告")
 
     if btn_run:
         input_data = [[max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]]
@@ -260,7 +215,9 @@ elif app_mode == "🥗 生活雷達篩檢":
         if l_age < 60: prob *= 0.7
         
         with c2:
-            st.subheader("📊 分析結果")
+            st.subheader("📊 分析結果與圖表解讀")
+            
+            # 1. 雷達圖
             cat = ['Sleep', 'Diet', 'Exercise', 'Memory', 'ADL']
             vals = [l_sleep/10, l_diet/10, l_act/10, l_func/10, l_adl/10]
             vals += vals[:1]; ang = np.linspace(0, 2*np.pi, 5, endpoint=False).tolist(); ang += ang[:1]
@@ -268,19 +225,36 @@ elif app_mode == "🥗 生活雷達篩檢":
             ax.fill(ang, vals, color='#007bff', alpha=0.3); ax.plot(ang, vals, color='#0056b3')
             ax.set_xticks(ang[:-1]); ax.set_xticklabels(cat); st.pyplot(fig)
             
+            st.markdown("""
+            <div class="explanation-box">
+            <b>圖表解讀：</b><br>
+            這張雷達圖顯示了您的五大健康維度。<b>面積越大代表越健康</b>。<br>
+            若某個角向內凹陷（例如 Sleep < 5），代表該項目是您的弱點，建議優先改善。
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # 2. 新增：群體比較圖 (BMI)
+            st.markdown("#### ⚖️ 您的 BMI 落點分析")
+            fig2, ax2 = plt.subplots(figsize=(6, 2))
+            sns.histplot(data=df_life_raw, x='BMI', kde=True, color='gray', alpha=0.3, ax=ax2)
+            ax2.axvline(x=l_bmi, color='red', linestyle='--', linewidth=3, label='You')
+            ax2.legend(); st.pyplot(fig2)
+            st.caption("紅色虛線為您的 BMI，灰色區域為資料庫中 2,000 位受試者的分佈。")
+
+            # 3. 風險評估
             risk_lvl = "High" if prob > 0.6 else ("Moderate" if prob > 0.3 else "Low")
             st.metric("預測風險機率", f"{prob:.1%}", delta="High Risk" if risk_lvl=="High" else "Low Risk", delta_color="inverse")
-            if risk_lvl == "High": st.error("🔴 高風險：建議立即諮詢醫師。")
-            elif risk_lvl == "Moderate": st.warning("🟡 中風險：建議改善生活習慣。")
-            else: st.success("🟢 低風險：請繼續保持。")
             
             fam_eng = "Yes" if l_fam == "有" else "No"
             pdf_bytes = create_pdf(f"User_{l_age}", risk_type=risk_lvl, prob=prob, factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": fam_eng})
             st.download_button("📥 下載 PDF 評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
 
-# --- PAGE 4: 臨床落點 ---
+# --- PAGE 4: 臨床落點 (詳細解讀版) ---
 elif app_mode == "🏥 臨床落點分析":
     st.title("🏥 臨床影像定位分析")
+    st.markdown("輸入 MRI 影像數值，分析您在同齡族群中的腦萎縮程度落點。")
+    st.divider()
+    
     c1, c2 = st.columns([1, 2])
     with c1:
         st.subheader("🧠 影像數據")
@@ -303,34 +277,51 @@ elif app_mode == "🏥 臨床落點分析":
             fig, ax = plt.subplots(figsize=(8, 5))
             sns.scatterplot(data=df_oasis, x='Age', y='nWBV', hue='CDR', palette='coolwarm', alpha=0.3, ax=ax)
             ax.scatter(c_age, c_nwbv, color='red', s=250, marker='*', label='You Are Here', edgecolors='black')
+            ax.set_ylabel("nWBV (Normalized Whole Brain Volume)")
             ax.legend(); st.pyplot(fig)
+            
+            st.markdown("""
+            <div class="explanation-box">
+            <b>圖表解讀：</b><br>
+            <ul>
+            <li><b>X軸 (Age)</b>：年齡。</li>
+            <li><b>Y軸 (nWBV)</b>：全腦體積比，數值越低代表腦萎縮越嚴重。</li>
+            <li><b>背景點</b>：藍色代表健康者，紅色代表失智患者。</li>
+            <li><b>紅星 (You Are Here)</b>：您的位置。若落入右下角紅點區，代表在同年齡層中，您的腦萎縮較嚴重，風險較高。</li>
+            </ul>
+            </div>
+            """, unsafe_allow_html=True)
+            
             st.metric("影像分析風險機率", f"{prob_c:.1%}")
             if prob_c > 0.5: st.error("🔴 高度疑似阿茲海默症病變 (腦萎縮顯著)")
             else: st.success("🟢 目前無明顯阿茲海默症特徵 (腦容量正常)")
 
-# --- PAGE 5: 數據驗證 (補回說明文字) ---
+# --- PAGE 5: 數據驗證 ---
 elif app_mode == "📊 數據驗證中心":
     st.title("📊 數據驗證中心 (Data Validation)")
     st.markdown("#### Model Performance & Static Analysis")
-    # [修改] 補回說明文字
     st.info("本區展示模型的準確度驗證 (ROC Curve) 與訓練數據的靜態分析圖表，證明系統的醫學可信度。")
     st.divider()
     
-    tab1, tab2, tab3 = st.tabs(["生活模型 (ROC)", "臨床模型 (ROC)", "💾 靜態圖表回顧"])
+    tab1, tab2, tab3 = st.tabs(["生活模型效能 (ROC)", "臨床模型效能 (ROC)", "💾 靜態圖表回顧"])
     with tab1:
+        st.markdown("**ROC 曲線 (Receiver Operating Characteristic)**：衡量二元分類模型的效能。AUC 越接近 1.0 代表準確度越高。")
         X_t, y_t = test_l; y_p = model_l.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#007bff'); ax.legend(); st.pyplot(fig)
+        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#007bff', lw=2)
+        ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
     with tab2:
+        st.markdown("**ROC 曲線**：此臨床模型基於 OASIS MRI 數據訓練，具備極高的分辨能力 (AUC通常 > 0.8)。")
         X_t, y_t = test_c; y_p = model_c.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#28a745'); ax.legend(); st.pyplot(fig)
+        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#28a745', lw=2)
+        ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
     with tab3:
         c1, c2, c3 = st.columns(3)
-        with c1: st.image("scatter_CDR_color.png", use_container_width=True)
-        with c2: st.image("heatmap_new.png", use_container_width=True)
-        with c3: st.image("feature_importance_new.png", use_container_width=True)
+        with c1: st.image("scatter_CDR_color.png", caption="Age vs MMSE (年齡與認知分數)", use_container_width=True)
+        with c2: st.image("heatmap_new.png", caption="Correlation Heatmap (相關性分析)", use_container_width=True)
+        with c3: st.image("feature_importance_new.png", caption="Feature Importance (重要因子)", use_container_width=True)
         c4, c5, c6 = st.columns(3)
-        with c4: st.image("csv3_scatter.png", use_container_width=True)
-        with c5: st.image("csv3_heatmap.png", use_container_width=True)
-        with c6: st.image("csv3_bar.png", use_container_width=True)
+        with c4: st.image("csv3_scatter.png", caption="Lifestyle Scatter", use_container_width=True)
+        with c5: st.image("csv3_heatmap.png", caption="Risk Factor Heatmap", use_container_width=True)
+        with c6: st.image("csv3_bar.png", caption="Life Importance", use_container_width=True)
