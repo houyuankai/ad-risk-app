@@ -9,7 +9,7 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_rep
 from fpdf import FPDF
 
 # ==========================================
-# 0. PDF 生成函式 (安全英文版)
+# 0. PDF 生成函式 (修復版：移除外部中文輸入)
 # ==========================================
 def create_pdf(user_name, risk_type, prob, factors):
     pdf = FPDF()
@@ -40,13 +40,11 @@ def create_pdf(user_name, risk_type, prob, factors):
     pdf.cell(200, 10, txt="Key Risk Factors:", ln=1)
     pdf.set_font("Arial", size=11)
     for key, value in factors.items():
-        # 確保內容轉為字串並移除潛在的非 ASCII 字符
-        safe_key = str(key).encode('ascii', 'ignore').decode('ascii')
-        safe_val = str(value).encode('ascii', 'ignore').decode('ascii')
-        pdf.cell(200, 8, txt=f"- {safe_key}: {safe_val}", ln=1)
+        # 確保轉為純英文/數字字串
+        pdf.cell(200, 8, txt=f"- {str(key)}: {str(value)}", ln=1)
     pdf.ln(10)
     
-    # 醫療建議
+    # 醫療建議 (直接在內部產生英文建議，不讀取外部變數)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Medical Advice:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -87,6 +85,13 @@ st.markdown("""
         display: block; margin-left: auto; margin-right: auto; 
         border-radius: 50%; border: 3px solid #BDC3C7;
     }
+    /* Chatbot 樣式優化 */
+    .stChatMessage {
+        background-color: #ffffff;
+        border-radius: 15px;
+        padding: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -126,9 +131,9 @@ model_l, test_l, model_c, test_c, df_oasis = load_all()
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center;'>AD-AI Pro v3.9</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center;'>AD-AI Pro v4.0</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
-app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
+app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
 st.sidebar.markdown("---")
 st.sidebar.caption("Designed by NYCU MED Project Team")
 
@@ -146,18 +151,60 @@ if app_mode == "🏠 系統首頁":
     with col1:
         st.success("👋 **歡迎使用！** 本系統結合機器學習與醫療專家邏輯，提供個人化的風險評估報告。")
         st.markdown("""
-        **系統四大核心功能：**
-        1. **🥗 生活雷達**：視覺化睡眠、飲食與運動的綜合影響。
-        2. **🏥 臨床落點**：基於 OASIS 數據庫定位腦部萎縮風險。
-        3. **📄 專業報告**：一鍵下載 PDF 評估報告。
-        4. **📊 數據實證**：公開 ROC 曲線與混淆矩陣，驗證模型效能。
+        **系統五大核心功能：**
+        1. **🤖 AI 諮詢**：智慧聊天機器人回答您的健康疑問。
+        2. **🥗 生活雷達**：視覺化睡眠、飲食與運動的綜合影響。
+        3. **🏥 臨床落點**：基於 OASIS 數據庫定位腦部萎縮風險。
+        4. **📄 專業報告**：一鍵下載 PDF 評估報告。
+        5. **📊 數據實證**：公開 ROC 曲線與混淆矩陣，驗證模型效能。
         """)
         st.info("💡 請點選左側選單開始檢測")
     with col2:
         try: st.image("brain_compare.png", use_container_width=True, caption="Healthy Brain vs AD Brain")
         except: st.warning("請確保 brain_compare.png 已上傳")
 
-# --- PAGE 2: 生活篩檢 ---
+# --- PAGE 2: AI Chatbot (新增功能) ---
+elif app_mode == "🤖 AI 衛教諮詢":
+    st.title("🤖 AI 衛教諮詢助手")
+    st.info("這是一個基於規則的衛教機器人，可以回答關於阿茲海默症的常見問題。")
+    
+    # 初始化聊天紀錄
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "assistant", "content": "您好！我是您的失智症衛教小幫手。您可以問我關於「症狀」、「預防」、「飲食」或「睡眠」的問題。"}]
+
+    # 顯示聊天紀錄
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # 處理使用者輸入
+    if prompt := st.chat_input("請輸入您的問題... (例如：我要怎麼預防失智？)"):
+        # 顯示使用者訊息
+        st.chat_message("user").markdown(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        # 簡單的關鍵字回應邏輯 (Rule-based Response)
+        response = "抱歉，我目前只能回答關於阿茲海默症的基礎問題。您可以試著問關於「飲食」、「運動」或「早期徵兆」的問題。"
+        
+        if any(x in prompt for x in ["飲食", "吃", "食物"]):
+            response = "💡 **飲食建議**：建議採用 **MIND 飲食** 或 **地中海飲食**。多攝取深綠色蔬菜、堅果、莓果類、豆類、全穀類、家禽與魚類。避免紅肉、奶油、起司與油炸食品。"
+        elif any(x in prompt for x in ["運動", "活動"]):
+            response = "🏃 **運動建議**：每週至少進行 150 分鐘的中等強度有氧運動（如快走、游泳、騎單車）。規律運動能增加腦部血流量，促進神經生長因子分泌，有助於降低失智風險。"
+        elif any(x in prompt for x in ["睡眠", "睡覺"]):
+            response = "😴 **睡眠重要性**：研究顯示，睡眠期間大腦會啟動「類淋巴系統」清除 β-類澱粉蛋白等代謝廢物。建議每晚維持 7-8 小時的高品質睡眠，並避免睡前使用3C產品。"
+        elif any(x in prompt for x in ["症狀", "徵兆", "前兆"]):
+            response = "⚠️ **早期十大警訊**：\n1. 記憶力衰退影響生活\n2. 計劃或解決問題有困難\n3. 對時間地點感到混淆\n4. 理解視覺影像有困難\n5. 語言表達出現問題\n6. 東西擺放錯亂且找不到\n7. 判斷力變差\n8. 退出社交活動\n9. 情緒與個性改變\n10. 無法勝任原本熟悉的事務"
+        elif any(x in prompt for x in ["預防", "避免"]):
+            response = "🛡️ **預防策略**：\n- **多動腦**：學習新語言、玩數獨、閱讀。\n- **多運動**：維持規律體能活動。\n- **採地中海飲食**。\n- **多社交**：參與社區活動，避免孤獨。\n- **控制三高**：高血壓、高血糖、高血脂是危險因子。"
+        elif any(x in prompt for x in ["你好", "嗨", "hello"]):
+            response = "您好！很高興為您服務。請問有什麼關於大腦健康的問題想了解嗎？"
+
+        # 顯示助手回應
+        with st.chat_message("assistant"):
+            st.markdown(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+# --- PAGE 3: 生活篩檢 ---
 elif app_mode == "🥗 生活雷達篩檢":
     st.title("🥗 生活型態風險評估")
     st.markdown("請輸入您的生活習慣數據，系統將為您生成五維健康雷達圖。")
@@ -204,18 +251,15 @@ elif app_mode == "🥗 生活雷達篩檢":
             elif risk_lvl == "Moderate": st.warning("🟡 中風險：建議改善生活習慣。")
             else: st.success("🟢 低風險：請繼續保持。")
             
-            # [修正 PDF 報錯] 將中文轉換為英文再傳入 create_pdf
+            # [修正 PDF] 將 fam 轉為英文再傳入，並不傳 advice (內部自動生成)
             fam_eng = "Yes" if l_fam == "有" else "No"
-            
             pdf_bytes = create_pdf(
-                user_name=f"User_{l_age}", 
-                risk_type=risk_lvl, 
-                prob=prob, 
+                user_name=f"User_{l_age}", risk_type=risk_lvl, prob=prob, 
                 factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": fam_eng}
             )
             st.download_button("📥 下載 PDF 評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
 
-# --- PAGE 3: 臨床落點 (文案優化) ---
+# --- PAGE 4: 臨床落點 ---
 elif app_mode == "🏥 臨床落點分析":
     st.title("🏥 臨床影像定位分析")
     st.markdown("輸入 MRI 影像數值，分析您在同齡族群中的腦萎縮程度落點。")
@@ -252,7 +296,6 @@ elif app_mode == "🏥 臨床落點分析":
             
             st.metric("影像分析風險機率", f"{prob_c:.1%}")
             
-            # [文案優化] 強調 AD 風險
             if prob_c > 0.5:
                 st.error("🔴 高度疑似阿茲海默症病變 (腦萎縮顯著)")
                 st.write("根據 nWBV 與年齡落點，您的腦容量顯著低於同齡平均，顯示高度 AD 風險。")
@@ -260,7 +303,7 @@ elif app_mode == "🏥 臨床落點分析":
                 st.success("🟢 目前無明顯阿茲海默症特徵 (腦容量正常)")
                 st.write("您的腦部體積落在同齡層的健康範圍內。")
 
-# --- PAGE 4: 數據驗證 (已修復大標題) ---
+# --- PAGE 5: 數據驗證 ---
 elif app_mode == "📊 數據驗證中心":
     st.title("📊 數據驗證中心 (Data Validation)")
     st.markdown("#### Model Performance & Static Analysis")
