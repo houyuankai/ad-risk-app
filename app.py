@@ -14,21 +14,28 @@ from fpdf import FPDF
 def create_pdf(user_name, risk_type, prob, factors):
     pdf = FPDF()
     pdf.add_page()
+    
+    # 標題
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt="Alzheimer's Risk Assessment Report", ln=1, align='C')
     pdf.ln(10)
     
+    # 時間 (台灣時區)
     tw_time = pd.Timestamp.now() + pd.Timedelta(hours=8)
+    
+    # 基本資料
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"User ID: {user_name}", ln=1)
     pdf.cell(200, 10, txt=f"Date: {tw_time.strftime('%Y-%m-%d %H:%M')}", ln=1)
     pdf.ln(5)
     
+    # 風險評估
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(200, 10, txt=f"Risk Level: {risk_type}", ln=1)
     pdf.cell(200, 10, txt=f"Probability: {prob:.1%}", ln=1)
     pdf.ln(5)
     
+    # 詳細因子
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Key Risk Factors:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -36,6 +43,7 @@ def create_pdf(user_name, risk_type, prob, factors):
         pdf.cell(200, 8, txt=f"- {str(key)}: {str(value)}", ln=1)
     pdf.ln(10)
     
+    # 醫療建議
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Medical Advice:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -48,26 +56,67 @@ def create_pdf(user_name, risk_type, prob, factors):
         advice_text = "Low risk detected. Continue maintaining a healthy lifestyle and regular exercise."
     
     pdf.multi_cell(0, 8, txt=advice_text)
+    
     return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
-# 1. 頁面配置 & CSS
+# 1. 頁面配置 & 清爽藍白 UI
 # ==========================================
 st.set_page_config(page_title="AD Risk AI Pro", page_icon="🧠", layout="wide")
 
 st.markdown("""
     <style>
-    .main {background-color: #FFFFFF;}
-    h1, h2, h3 {color: #0056b3; font-family: 'Helvetica Neue', sans-serif;}
-    .stButton>button {
-        color: white; background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-        border: none; border-radius: 8px; padding: 12px 24px; width: 100%; font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;
+    /* 全站背景：純白 */
+    .stApp {
+        background-color: #FFFFFF;
     }
-    .stButton>button:hover {transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2);}
-    [data-testid="stSidebar"] {background-color: #F0F4F8; border-right: 1px solid #D1D9E6;}
-    .stChatMessage {background-color: #F8F9FA; border: 1px solid #E9ECEF; border-radius: 12px; padding: 15px; margin-bottom: 10px;}
-    [data-testid="stSidebar"] img {display: block; margin-left: auto; margin-right: auto; border-radius: 50%; border: 3px solid #007bff;}
+    
+    /* 標題與文字：深藍色 */
+    h1, h2, h3 {
+        color: #0056b3; 
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    
+    /* 側邊欄：淺藍灰背景 */
+    [data-testid="stSidebar"] {
+        background-color: #F0F4F8;
+        border-right: 1px solid #D1D9E6;
+    }
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #2C3E50;
+    }
+    
+    /* 按鈕樣式：亮藍色漸層 */
+    .stButton>button {
+        color: white; 
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none; 
+        border-radius: 8px; 
+        padding: 12px 24px; 
+        width: 100%;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: 0.2s;
+    }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    /* Chatbot 對話框 */
+    .stChatMessage {
+        background-color: #F8F9FA;
+        border: 1px solid #E9ECEF;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    
+    /* 圖片圓框 */
+    [data-testid="stSidebar"] img {
+        display: block; margin-left: auto; margin-right: auto; 
+        border-radius: 50%; border: 3px solid #007bff;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -76,14 +125,14 @@ st.markdown("""
 # ==========================================
 @st.cache_resource
 def load_all():
-    # 生活模型
+    # --- A. 生活型態模型 ---
     df_l = pd.read_csv('alzheimers_disease_data.csv')
     feat_l = ['Age', 'BMI', 'SleepQuality', 'PhysicalActivity', 'DietQuality', 'FamilyHistoryAlzheimers', 'SystolicBP', 'FunctionalAssessment', 'ADL']
     X_l = df_l[feat_l]; y_l = df_l['Diagnosis']
     X_train_l, X_test_l, y_train_l, y_test_l = train_test_split(X_l, y_l, test_size=0.2, random_state=42)
     clf_l = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_l, y_train_l)
     
-    # 臨床模型
+    # --- B. 臨床精準模型 ---
     df_c_raw = pd.read_csv('oasis_cross-sectional.csv').rename(columns={'Educ': 'EDUC'})
     df_long_raw = pd.read_csv('oasis_longitudinal.csv')
     df_long_raw = df_long_raw[df_long_raw['Visit'] == 1]
@@ -102,12 +151,12 @@ def load_all():
 model_l, test_l, model_c, test_c, df_oasis = load_all()
 
 # ==========================================
-# 3. 側邊欄
+# 3. 側邊欄與 Logo
 # ==========================================
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v5.2</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v5.3</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
 st.sidebar.markdown("---")
@@ -125,9 +174,9 @@ if app_mode == "🏠 系統首頁":
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.info("👋 **歡迎使用 v5.2 專業版！**")
+        st.info("👋 **歡迎使用 v5.3 專業版！**")
         st.markdown("""
-        **系統整合了五大核心功能：**
+        **系統五大核心功能：**
         1. **🤖 AI 諮詢**：提供就醫指引、費用諮詢與衛教問答。
         2. **🥗 生活雷達**：視覺化睡眠、飲食與運動的綜合影響。
         3. **🏥 臨床落點**：基於 OASIS 數據庫定位腦部萎縮風險。
@@ -139,10 +188,11 @@ if app_mode == "🏠 系統首頁":
         try: st.image("brain_compare.png", use_container_width=True, caption="Healthy Brain vs AD Brain")
         except: st.warning("請確保 brain_compare.png 已上傳")
 
-# --- PAGE 2: AI Chatbot (升級版) ---
+# --- PAGE 2: AI Chatbot (文字修訂版) ---
 elif app_mode == "🤖 AI 衛教諮詢":
     st.title("🤖 AI 衛教諮詢助手")
-    st.info("💡 提示：您可以問我「什麼是阿茲海默症？」、「如何預防？」、「掛號費用」或簡單的打招呼喔！")
+    # [修改] 提示文字更新
+    st.info("💡 提示：您可以問我關於「阿茲海默症」的相關問題，例如症狀、預防、治療或就醫資訊。")
     
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "您好！我是您的健康管家。請問今天有什麼我可以幫您的嗎？"}]
@@ -155,7 +205,7 @@ elif app_mode == "🤖 AI 衛教諮詢":
         st.chat_message("user").markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # 智慧關鍵字邏輯 (Smart Keyword Matching)
+        # 智慧關鍵字邏輯
         q = prompt.lower()
         if any(x in q for x in ["阿茲海默", "失智", "老人痴呆", "什麼是"]):
             reply = "🧠 **疾病簡介**：\n阿茲海默症 (Alzheimer's Disease) 是一種大腦神經退化性疾病，也是最常見的失智症類型。成因與大腦內異常蛋白質堆積（β-類澱粉蛋白斑塊、Tau 蛋白纏結）有關，導致神經細胞死亡，影響記憶、認知與語言能力。早期症狀通常是近期記憶力衰退，逐漸影響到判斷力與日常生活。"
@@ -258,18 +308,23 @@ elif app_mode == "🏥 臨床落點分析":
             if prob_c > 0.5: st.error("🔴 高度疑似阿茲海默症病變 (腦萎縮顯著)")
             else: st.success("🟢 目前無明顯阿茲海默症特徵 (腦容量正常)")
 
-# --- PAGE 5: 數據驗證 ---
+# --- PAGE 5: 數據驗證 (補回說明文字) ---
 elif app_mode == "📊 數據驗證中心":
-    st.title("📊 數據驗證中心")
+    st.title("📊 數據驗證中心 (Data Validation)")
+    st.markdown("#### Model Performance & Static Analysis")
+    # [修改] 補回說明文字
+    st.info("本區展示模型的準確度驗證 (ROC Curve) 與訓練數據的靜態分析圖表，證明系統的醫學可信度。")
+    st.divider()
+    
     tab1, tab2, tab3 = st.tabs(["生活模型 (ROC)", "臨床模型 (ROC)", "💾 靜態圖表回顧"])
     with tab1:
         X_t, y_t = test_l; y_p = model_l.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='blue'); ax.legend(); st.pyplot(fig)
+        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#007bff'); ax.legend(); st.pyplot(fig)
     with tab2:
         X_t, y_t = test_c; y_p = model_c.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='green'); ax.legend(); st.pyplot(fig)
+        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#28a745'); ax.legend(); st.pyplot(fig)
     with tab3:
         c1, c2, c3 = st.columns(3)
         with c1: st.image("scatter_CDR_color.png", use_container_width=True)
