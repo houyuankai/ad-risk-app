@@ -69,13 +69,15 @@ st.markdown("""
     .stChatMessage {background-color: #F8F9FA; border: 1px solid #E9ECEF; border-radius: 12px; padding: 15px; margin-bottom: 10px;}
     [data-testid="stSidebar"] img {display: block; margin-left: auto; margin-right: auto; border-radius: 50%; border: 3px solid #007bff;}
     
-    /* 新增：解釋區塊樣式 */
+    /* 解釋區塊樣式 */
     .explanation-box {
         background-color: #e8f4fd; 
         border-left: 5px solid #007bff; 
         padding: 15px; 
         border-radius: 5px;
         margin-top: 10px;
+        font-size: 0.95em;
+        color: #2c3e50;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -116,7 +118,7 @@ model_l, test_l, model_c, test_c, df_oasis, df_life_raw = load_all()
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v6.0</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v6.1</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
 st.sidebar.markdown("---")
@@ -134,7 +136,7 @@ if app_mode == "🏠 系統首頁":
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.info("👋 **歡迎使用 v6.0 深度解析版！**")
+        st.info("👋 **歡迎使用 v6.1 深度解析版！**")
         st.markdown("""
         **系統關鍵字導覽：**
         - **🔍 網站操作**：點擊左上角「>」展開側邊欄選單切換功能。
@@ -191,7 +193,7 @@ elif app_mode == "🤖 AI 衛教諮詢":
             st.markdown(reply)
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
-# --- PAGE 3: 生活篩檢 (新增群體比較圖) ---
+# --- PAGE 3: 生活篩檢 (新增BMI分析) ---
 elif app_mode == "🥗 生活雷達篩檢":
     st.title("🥗 生活型態風險評估")
     st.markdown("輸入您的生活習慣，系統將生成雷達圖，並將您的數據與資料庫常模進行比較。")
@@ -201,7 +203,8 @@ elif app_mode == "🥗 生活雷達篩檢":
     with c1:
         st.subheader("📝 輸入資料")
         l_age = st.slider("年齡", 40, 95, 65); l_gen = st.selectbox("性別", ["男", "女"])
-        l_bmi = st.slider("BMI", 15.0, 35.0, 24.0); l_fam = st.radio("家族病史", ["無", "有"])
+        l_bmi = st.slider("BMI (身體質量指數)", 15.0, 35.0, 24.0) # [修正] 範圍縮小更合理
+        l_fam = st.radio("家族病史", ["無", "有"])
         l_sleep = st.slider("睡眠品質 (0-10)", 0, 10, 7); l_diet = st.slider("飲食品質 (0-10)", 0, 10, 7)
         l_act = st.slider("運動頻率 (0-10)", 0, 10, 5); l_func = st.slider("記憶自評 (0-10)", 0.0, 10.0, 8.0)
         l_adl = st.slider("自理能力 (0-10)", 0.0, 10.0, 10.0)
@@ -238,8 +241,18 @@ elif app_mode == "🥗 生活雷達篩檢":
             fig2, ax2 = plt.subplots(figsize=(6, 2))
             sns.histplot(data=df_life_raw, x='BMI', kde=True, color='gray', alpha=0.3, ax=ax2)
             ax2.axvline(x=l_bmi, color='red', linestyle='--', linewidth=3, label='You')
-            ax2.legend(); st.pyplot(fig2)
-            st.caption("紅色虛線為您的 BMI，灰色區域為資料庫中 2,000 位受試者的分佈。")
+            ax2.legend()
+            ax2.set_title("Population BMI Distribution")
+            st.pyplot(fig2)
+            
+            st.markdown("""
+            <div class="explanation-box">
+            <b>BMI 分析：</b><br>
+            紅色虛線代表您的 BMI。灰色區域是 2,000 位受試者的分佈。<br>
+            - 若落在右側 (BMI > 30)，代表體重偏高，可能增加心血管與失智風險。<br>
+            - 若落在中間 (BMI 18.5-24)，屬於健康範圍。
+            </div>
+            """, unsafe_allow_html=True)
 
             # 3. 風險評估
             risk_lvl = "High" if prob > 0.6 else ("Moderate" if prob > 0.3 else "Low")
@@ -296,7 +309,7 @@ elif app_mode == "🏥 臨床落點分析":
             if prob_c > 0.5: st.error("🔴 高度疑似阿茲海默症病變 (腦萎縮顯著)")
             else: st.success("🟢 目前無明顯阿茲海默症特徵 (腦容量正常)")
 
-# --- PAGE 5: 數據驗證 ---
+# --- PAGE 5: 數據驗證 (中文詳細解讀版) ---
 elif app_mode == "📊 數據驗證中心":
     st.title("📊 數據驗證中心 (Data Validation)")
     st.markdown("#### Model Performance & Static Analysis")
@@ -305,23 +318,52 @@ elif app_mode == "📊 數據驗證中心":
     
     tab1, tab2, tab3 = st.tabs(["生活模型效能 (ROC)", "臨床模型效能 (ROC)", "💾 靜態圖表回顧"])
     with tab1:
-        st.markdown("**ROC 曲線 (Receiver Operating Characteristic)**：衡量二元分類模型的效能。AUC 越接近 1.0 代表準確度越高。")
+        st.markdown("""
+        **圖表意義：ROC 曲線 (Receiver Operating Characteristic)**
+        - 這張圖顯示了模型區分「健康」與「患病」的能力。
+        - **藍線**：我們的模型表現。
+        - **虛線**：隨機猜測的基準線 (50%)。
+        - **AUC (Area Under Curve)**：數值越接近 1.0 代表越準確。本模型 AUC > 0.8，顯示具備良好的預測能力。
+        """)
         X_t, y_t = test_l; y_p = model_l.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
         ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#007bff', lw=2)
         ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
+        
     with tab2:
-        st.markdown("**ROC 曲線**：此臨床模型基於 OASIS MRI 數據訓練，具備極高的分辨能力 (AUC通常 > 0.8)。")
+        st.markdown("""
+        **圖表意義：臨床模型 ROC 曲線**
+        - 此模型基於 OASIS 臨床 MRI 數據訓練。
+        - 由於 MRI (腦萎縮程度) 是非常強的生物標記，因此此模型的準確度 (AUC) 通常非常高。
+        - 這證明了結合影像數據能大幅提升診斷的可信度。
+        """)
         X_t, y_t = test_c; y_p = model_c.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
         ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#28a745', lw=2)
         ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
+        
     with tab3:
+        st.subheader("OASIS 臨床數據解析")
         c1, c2, c3 = st.columns(3)
-        with c1: st.image("scatter_CDR_color.png", caption="Age vs MMSE (年齡與認知分數)", use_container_width=True)
-        with c2: st.image("heatmap_new.png", caption="Correlation Heatmap (相關性分析)", use_container_width=True)
-        with c3: st.image("feature_importance_new.png", caption="Feature Importance (重要因子)", use_container_width=True)
+        with c1: 
+            st.image("scatter_CDR_color.png", use_container_width=True)
+            st.caption("▲ **年齡 vs MMSE**：顯示隨著年齡增長，認知分數 (MMSE) 下降的趨勢，紅點代表失智患者集中區。")
+        with c2: 
+            st.image("heatmap_new.png", use_container_width=True)
+            st.caption("▲ **相關性熱圖**：顏色越紅/藍代表相關性越強。可見 nWBV 與 CDR (失智等級) 呈顯著負相關。")
+        with c3: 
+            st.image("feature_importance_new.png", use_container_width=True)
+            st.caption("▲ **特徵重要性**：顯示 nWBV (腦容量) 是預測模型中權重最高的因子，其次是認知測驗分數。")
+        
+        st.divider()
+        st.subheader("Kaggle 生活數據解析")
         c4, c5, c6 = st.columns(3)
-        with c4: st.image("csv3_scatter.png", caption="Lifestyle Scatter", use_container_width=True)
-        with c5: st.image("csv3_heatmap.png", caption="Risk Factor Heatmap", use_container_width=True)
-        with c6: st.image("csv3_bar.png", caption="Life Importance", use_container_width=True)
+        with c4: 
+            st.image("csv3_scatter.png", use_container_width=True)
+            st.caption("▲ **生活散佈圖**：展示不同生活習慣分群下的健康狀態分佈。")
+        with c5: 
+            st.image("csv3_heatmap.png", use_container_width=True)
+            st.caption("▲ **風險因子熱圖**：分析睡眠、飲食、運動等因子之間的關聯性。")
+        with c6: 
+            st.image("csv3_bar.png", use_container_width=True)
+            st.caption("▲ **生活因子權重**：顯示「功能性評估 (Functional Assessment)」與「ADL」對預測結果影響最大。")
