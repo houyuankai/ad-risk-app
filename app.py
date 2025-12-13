@@ -138,9 +138,10 @@ st.sidebar.markdown("---")
 with st.sidebar.expander("⚠️ 免責聲明 (Disclaimer)"):
     st.markdown("""
     本系統為學術專題研究原型。
-    - **生活數據**：使用 Kaggle 合成數據集，僅供模型驗證。
-    - **臨床數據**：使用 OASIS 公開數據集。
-    - **結果用途**：僅供教學與研究參考，**非醫療診斷依據**。
+    - **生活數據**：使用 Kaggle 合成數據集，僅供模型驗證，會於未來優化，擬定引入真實數據補強。
+    - **臨床數據**：使用 OASIS 公開數據集，ApoE4及遺傳暫時透過加權模擬，會於未來優化。
+    - **數據驗證中心**：同上。
+    - **結果用途**：僅供教學與研究參考，**非醫療診斷依據**!
     """)
 
 st.sidebar.caption("Designed by NYCU MED Project Team")
