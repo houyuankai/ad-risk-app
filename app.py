@@ -352,7 +352,7 @@ elif app_mode == "🏥 臨床落點分析":
 elif app_mode == "📊 數據驗證中心":
     st.title("📊 數據驗證中心 (Data Validation)")
     st.markdown("#### Model Performance & Static Analysis")
-    st.info("本區展示模型的準確度驗證 (ROC Curve) 與訓練數據的靜態分析圖表，證明系統的醫學可信度。")
+    st.info("本區展示模型的準確度驗證 (ROC Curve) 與訓練數據的靜態分析圖表。")
     st.divider()
     
     tab1, tab2, tab3 = st.tabs(["生活模型效能 (ROC)", "臨床模型效能 (ROC)", "💾 靜態圖表回顧"])
