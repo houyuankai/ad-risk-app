@@ -9,7 +9,7 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_rep
 from fpdf import FPDF
 
 # ==========================================
-# 0. PDF 生成函式 (修復版：移除外部中文輸入)
+# 0. PDF 生成函式 (安全英文版)
 # ==========================================
 def create_pdf(user_name, risk_type, prob, factors):
     pdf = FPDF()
@@ -40,11 +40,10 @@ def create_pdf(user_name, risk_type, prob, factors):
     pdf.cell(200, 10, txt="Key Risk Factors:", ln=1)
     pdf.set_font("Arial", size=11)
     for key, value in factors.items():
-        # 確保轉為純英文/數字字串
         pdf.cell(200, 8, txt=f"- {str(key)}: {str(value)}", ln=1)
     pdf.ln(10)
     
-    # 醫療建議 (直接在內部產生英文建議，不讀取外部變數)
+    # 醫療建議 (根據風險等級對應英文建議)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Medical Advice:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -61,36 +60,59 @@ def create_pdf(user_name, risk_type, prob, factors):
     return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
-# 1. 頁面配置 & CSS 優化
+# 1. 頁面配置 & CSS 頂級優化 (Medical Theme)
 # ==========================================
 st.set_page_config(page_title="AD Risk AI Pro", page_icon="🧠", layout="wide")
 
 st.markdown("""
     <style>
-    .main {background-color: #F8F9FA;}
-    h1 {color: #2C3E50; font-family: 'Helvetica Neue', sans-serif;}
-    h2, h3 {color: #34495E;}
+    /* 全站背景：極簡灰白 */
+    .stApp {
+        background-color: #F8F9FA;
+    }
+    
+    /* 標題字體優化 */
+    h1, h2, h3 {
+        color: #2C3E50;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    /* 按鈕樣式：漸層藍，圓角 */
     .stButton>button {
-        color: white; background-color: #0068C9; 
-        border-radius: 8px; border: none; padding: 10px; width: 100%;
+        color: white; 
+        background: linear-gradient(135deg, #3498DB 0%, #2C3E50 100%);
+        border: none; 
+        border-radius: 25px; 
+        padding: 10px 20px; 
+        width: 100%;
         font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         transition: 0.3s;
     }
     .stButton>button:hover {
-        background-color: #00509E;
-        transform: scale(1.02);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.2);
     }
-    [data-testid="stSidebar"] {background-color: #E9ECEF;}
+    
+    /* 側邊欄樣式 */
+    [data-testid="stSidebar"] {
+        background-color: #ECF0F1;
+        border-right: 1px solid #BDC3C7;
+    }
+    
+    /* Chatbot 對話框優化 */
+    .stChatMessage {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 10px;
+    }
+    
+    /* 側邊欄圖片圓框 */
     [data-testid="stSidebar"] img {
         display: block; margin-left: auto; margin-right: auto; 
-        border-radius: 50%; border: 3px solid #BDC3C7;
-    }
-    /* Chatbot 樣式優化 */
-    .stChatMessage {
-        background-color: #ffffff;
-        border-radius: 15px;
-        padding: 10px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border-radius: 50%; border: 4px solid #BDC3C7;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -131,7 +153,7 @@ model_l, test_l, model_c, test_c, df_oasis = load_all()
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center;'>AD-AI Pro v4.0</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center;'>AD-AI Pro v5.0</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
 st.sidebar.markdown("---")
@@ -149,10 +171,10 @@ if app_mode == "🏠 系統首頁":
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.success("👋 **歡迎使用！** 本系統結合機器學習與醫療專家邏輯，提供個人化的風險評估報告。")
+        st.success("👋 **歡迎使用 v5.0 旗艦版！**")
         st.markdown("""
-        **系統五大核心功能：**
-        1. **🤖 AI 諮詢**：智慧聊天機器人回答您的健康疑問。
+        **系統整合了五大核心功能：**
+        1. **🤖 AI 諮詢**：提供就醫指引、費用諮詢與衛教問答。
         2. **🥗 生活雷達**：視覺化睡眠、飲食與運動的綜合影響。
         3. **🏥 臨床落點**：基於 OASIS 數據庫定位腦部萎縮風險。
         4. **📄 專業報告**：一鍵下載 PDF 評估報告。
@@ -163,46 +185,48 @@ if app_mode == "🏠 系統首頁":
         try: st.image("brain_compare.png", use_container_width=True, caption="Healthy Brain vs AD Brain")
         except: st.warning("請確保 brain_compare.png 已上傳")
 
-# --- PAGE 2: AI Chatbot (新增功能) ---
+# --- PAGE 2: AI Chatbot (擴充關鍵字版) ---
 elif app_mode == "🤖 AI 衛教諮詢":
     st.title("🤖 AI 衛教諮詢助手")
-    st.info("這是一個基於規則的衛教機器人，可以回答關於阿茲海默症的常見問題。")
+    st.info("💡 提示：您可以問我關於「掛號」、「費用」、「保險」或「預防」的問題喔！")
     
-    # 初始化聊天紀錄
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "您好！我是您的失智症衛教小幫手。您可以問我關於「症狀」、「預防」、「飲食」或「睡眠」的問題。"}]
+        st.session_state.messages = [{"role": "assistant", "content": "您好！我是您的健康管家。請問今天有什麼我可以幫您的嗎？"}]
 
-    # 顯示聊天紀錄
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-    # 處理使用者輸入
-    if prompt := st.chat_input("請輸入您的問題... (例如：我要怎麼預防失智？)"):
-        # 顯示使用者訊息
+    if prompt := st.chat_input("請輸入您的問題..."):
         st.chat_message("user").markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # 簡單的關鍵字回應邏輯 (Rule-based Response)
-        response = "抱歉，我目前只能回答關於阿茲海默症的基礎問題。您可以試著問關於「飲食」、「運動」或「早期徵兆」的問題。"
-        
-        if any(x in prompt for x in ["飲食", "吃", "食物"]):
-            response = "💡 **飲食建議**：建議採用 **MIND 飲食** 或 **地中海飲食**。多攝取深綠色蔬菜、堅果、莓果類、豆類、全穀類、家禽與魚類。避免紅肉、奶油、起司與油炸食品。"
-        elif any(x in prompt for x in ["運動", "活動"]):
-            response = "🏃 **運動建議**：每週至少進行 150 分鐘的中等強度有氧運動（如快走、游泳、騎單車）。規律運動能增加腦部血流量，促進神經生長因子分泌，有助於降低失智風險。"
-        elif any(x in prompt for x in ["睡眠", "睡覺"]):
-            response = "😴 **睡眠重要性**：研究顯示，睡眠期間大腦會啟動「類淋巴系統」清除 β-類澱粉蛋白等代謝廢物。建議每晚維持 7-8 小時的高品質睡眠，並避免睡前使用3C產品。"
-        elif any(x in prompt for x in ["症狀", "徵兆", "前兆"]):
-            response = "⚠️ **早期十大警訊**：\n1. 記憶力衰退影響生活\n2. 計劃或解決問題有困難\n3. 對時間地點感到混淆\n4. 理解視覺影像有困難\n5. 語言表達出現問題\n6. 東西擺放錯亂且找不到\n7. 判斷力變差\n8. 退出社交活動\n9. 情緒與個性改變\n10. 無法勝任原本熟悉的事務"
-        elif any(x in prompt for x in ["預防", "避免"]):
-            response = "🛡️ **預防策略**：\n- **多動腦**：學習新語言、玩數獨、閱讀。\n- **多運動**：維持規律體能活動。\n- **採地中海飲食**。\n- **多社交**：參與社區活動，避免孤獨。\n- **控制三高**：高血壓、高血糖、高血脂是危險因子。"
-        elif any(x in prompt for x in ["你好", "嗨", "hello"]):
-            response = "您好！很高興為您服務。請問有什麼關於大腦健康的問題想了解嗎？"
+        # 擴充版關鍵字邏輯
+        q = prompt.lower()
+        if any(x in q for x in ["飲食", "吃", "營養", "食物"]):
+            reply = "🥗 **飲食建議**：推薦 **MIND 飲食法**（地中海飲食結合舒緩飲食）。\n- ✅ **多吃**：綠色蔬菜、堅果、莓果、豆類、全穀類、魚類。\n- ❌ **少吃**：紅肉、奶油、起司、甜點、油炸食品。"
+        elif any(x in q for x in ["運動", "跑步", "活動"]):
+            reply = "🏃 **運動處方**：建議每週 150 分鐘中等強度運動（如快走、太極拳）。運動能促進腦源性神經滋養因子 (BDNF) 分泌，延緩腦部退化。"
+        elif any(x in q for x in ["睡眠", "睡覺", "失眠"]):
+            reply = "😴 **睡眠與大腦**：長期睡眠不足會導致 β-類澱粉蛋白堆積。建議：\n1. 固定作息\n2. 睡前遠離手機\n3. 確保 7-8 小時優質睡眠。"
+        elif any(x in q for x in ["診所", "掛號", "看醫生", "醫院", "科別"]):
+            reply = "🏥 **就醫指引**：\n若懷疑有失智症狀，建議掛 **「神經內科」** 或 **「身心科 (精神科)」**。\n台灣各大醫院皆設有「記憶門診」或「失智症中心」，可提供專業評估。"
+        elif any(x in q for x in ["檢查", "檢測", "評估", "測驗"]):
+            reply = "🩺 **常見檢查項目**：\n1. **臨床問診**：醫師評估病史。\n2. **認知測驗**：如 MMSE, MoCA 量表。\n3. **血液檢查**：排除維生素 B12 缺乏或甲狀腺問題。\n4. **腦部影像**：MRI 或 CT 檢查腦萎縮情形。"
+        elif any(x in q for x in ["費用", "錢", "健保", "自費"]):
+            reply = "💰 **費用資訊**：\n- **健保給付**：大部分的門診、認知測驗與標準 MRI 皆有健保給付。\n- **自費項目**：高階影像檢查（如 PET 掃描）或特殊基因檢測可能需自費，建議諮詢主治醫師。"
+        elif any(x in q for x in ["保險", "理賠"]):
+            reply = "📄 **保險資訊**：\n若您有投保「重大疾病險」或「長照險」，確診失智症後通常可申請理賠。請檢視您的保單條款，確認是否包含「阿茲海默症」或「認知功能障礙」。"
+        elif any(x in q for x in ["預防", "避免"]):
+            reply = "🛡️ **趨吉避凶原則**：\n- **趨吉**：多動腦、多運動、多社交、均衡飲食。\n- **避凶**：三高（高血壓/血脂/血糖）、頭部外傷、抽菸、憂鬱。"
+        elif any(x in q for x in ["你好", "嗨", "早安", "謝謝"]):
+            reply = "😊 您好！很高興能為您服務。保持心情愉快也是大腦健康的重要秘訣喔！"
+        else:
+            reply = "抱歉，這個問題有點深奧。您可以試著問：「怎麼吃比較好？」、「要去哪裡看醫生？」或「檢查要多少錢？」"
 
-        # 顯示助手回應
         with st.chat_message("assistant"):
-            st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            st.markdown(reply)
+        st.session_state.messages.append({"role": "assistant", "content": reply})
 
 # --- PAGE 3: 生活篩檢 ---
 elif app_mode == "🥗 生活雷達篩檢":
@@ -225,23 +249,19 @@ elif app_mode == "🥗 生活雷達篩檢":
         btn_run = st.button("生成分析報告")
 
     if btn_run:
-        # [預測邏輯]
         input_data = [[max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]]
         prob = model_l.predict_proba(input_data)[0][1]
-        
-        # [專家加權]
         if l_fam == "有": prob = min(0.99, prob * 1.3)
         if l_gen == "女": prob = min(0.99, prob * 1.1)
         if l_age < 60: prob *= 0.7
         
         with c2:
             st.subheader("📊 分析結果")
-            # 雷達圖
             cat = ['Sleep', 'Diet', 'Exercise', 'Memory', 'ADL']
             vals = [l_sleep/10, l_diet/10, l_act/10, l_func/10, l_adl/10]
             vals += vals[:1]; ang = np.linspace(0, 2*np.pi, 5, endpoint=False).tolist(); ang += ang[:1]
             fig, ax = plt.subplots(figsize=(4, 4), subplot_kw=dict(polar=True))
-            ax.fill(ang, vals, color='#0068C9', alpha=0.3); ax.plot(ang, vals, color='#0068C9')
+            ax.fill(ang, vals, color='#3498DB', alpha=0.3); ax.plot(ang, vals, color='#2980B9')
             ax.set_xticks(ang[:-1]); ax.set_xticklabels(cat); st.pyplot(fig)
             
             risk_lvl = "High" if prob > 0.6 else ("Moderate" if prob > 0.3 else "Low")
@@ -251,7 +271,6 @@ elif app_mode == "🥗 生活雷達篩檢":
             elif risk_lvl == "Moderate": st.warning("🟡 中風險：建議改善生活習慣。")
             else: st.success("🟢 低風險：請繼續保持。")
             
-            # [修正 PDF] 將 fam 轉為英文再傳入，並不傳 advice (內部自動生成)
             fam_eng = "Yes" if l_fam == "有" else "No"
             pdf_bytes = create_pdf(
                 user_name=f"User_{l_age}", risk_type=risk_lvl, prob=prob, 
@@ -283,7 +302,6 @@ elif app_mode == "🏥 臨床落點分析":
         input_c = [[g_val, c_age, c_educ, c_ses, c_etiv, c_nwbv]]
         prob_c = model_c.predict_proba(input_c)[0][1]
         
-        # 基因加權
         if "High" in c_apoe: prob_c = min(0.99, prob_c * 1.5)
         elif "Positive" in c_apoe: prob_c = min(0.99, prob_c * 1.2)
         
@@ -316,7 +334,7 @@ elif app_mode == "📊 數據驗證中心":
         st.subheader("生活型態模型效能")
         X_t, y_t = test_l; y_p = model_l.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='blue', lw=2)
+        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#3498DB', lw=2)
         ax.plot([0,1],[0,1],'k--'); ax.set_xlabel('False Positive Rate'); ax.set_ylabel('True Positive Rate')
         ax.legend(); st.pyplot(fig)
         
@@ -324,7 +342,7 @@ elif app_mode == "📊 數據驗證中心":
         st.subheader("臨床影像模型效能")
         X_t, y_t = test_c; y_p = model_c.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='green', lw=2)
+        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#27AE60', lw=2)
         ax.plot([0,1],[0,1],'k--'); ax.set_xlabel('False Positive Rate'); ax.set_ylabel('True Positive Rate')
         ax.legend(); st.pyplot(fig)
         
