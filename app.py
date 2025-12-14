@@ -376,10 +376,10 @@ elif app_mode == "📊 數據驗證中心":
             st.caption("▲ **年齡 vs MMSE**：顯示隨著年齡增長，認知分數 (MMSE) 下降的趨勢，紅點代表失智患者集中區。")
         with c2: 
             st.image("heatmap_new.png", use_container_width=True)
-            st.caption("▲ **相關性熱圖**：顏色越紅/藍代表相關性越強。可見 nWBV 與 CDR (失智等級) 呈顯著負相關。")
+            st.caption("▲ **相關性熱圖**：顏色越紅/藍代表相關性越強。圖中可見 nWBV 與 CDR (失智等級) 呈負相關。")
         with c3: 
             st.image("feature_importance_new.png", use_container_width=True)
-            st.caption("▲ **特徵重要性**：顯示 nWBV (腦容量) 是預測模型中權重最高的因子，其次是認知測驗分數。")
+            st.caption("▲ **特徵重要性**：顯示 nWBV (腦容量) 是預測模型中權重最高的因子，其次是認知受試者年齡。")
         
         st.divider()
         st.subheader("Kaggle 生活數據解析")
