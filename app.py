@@ -135,7 +135,7 @@ app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛�
 st.sidebar.markdown("---")
 
 # 側欄免責
-with st.sidebar.expander("⚠️ 免責聲明 (Disclaimer)"):
+with st.sidebar.expander("⚠️ 免責聲明 "):
     st.markdown("""
     本系統為學術專題研究原型。
     - **生活數據**：使用 Kaggle 合成數據集，僅供模型驗證，會於未來優化，擬定引入真實數據補強。
@@ -158,7 +158,7 @@ if app_mode == "🏠 系統首頁":
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.info("👋 **歡迎使用 v6.4 專業版！**")
+        st.info("👋 **歡迎使用 阿茲海默雙軌風險評估系統 v6.4！**")
         st.markdown("""
         **🔍 網站操作指南：**
         請點擊左上角的 **「>>」符號** 展開側邊欄選單，即可切換以下功能：
