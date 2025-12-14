@@ -392,4 +392,4 @@ elif app_mode == "📊 數據驗證中心":
             st.caption("▲ **風險因子熱圖**：分析睡眠、飲食、運動等因子之間的關聯性。")
         with c6: 
             st.image("csv3_bar.png", use_container_width=True)
-            st.caption("▲ **生活因子權重**：顯示「功能性評估」與「ADL」對預測結果影響最大，其次是 BMI 與睡眠。")
+            st.caption("▲ **生活因子權重**：顯示「功能性評估」與「ADL」對預測結果影響最大。")
