@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import matplotlib.subplots
 import matplotlib.pyplot as plt
+import re
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
@@ -51,7 +53,7 @@ def create_pdf(user_name, risk_type, prob, factors):
     return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
-# 1. 頁面配置 &  UI
+# 1. 頁面配置 & UI
 # ==========================================
 st.set_page_config(page_title="AD Risk AI Pro", page_icon="🧠", layout="wide")
 
@@ -111,7 +113,7 @@ def load_all():
     df_long_raw = df_long_raw[df_long_raw['Visit'] == 1]
     common = ['M/F', 'Age', 'EDUC', 'SES', 'MMSE', 'CDR', 'eTIV', 'nWBV']
     df_oasis = pd.concat([df_c_raw[[c for c in common if c in df_c_raw.columns]], 
-                         df_long_raw[[c for c in common if c in df_long_raw.columns]]], ignore_index=True).dropna()
+                          df_long_raw[[c for c in common if c in df_long_raw.columns]]], ignore_index=True).dropna()
     df_oasis['M/F'] = df_oasis['M/F'].apply(lambda x: 1 if str(x).startswith('F') else 0)
     df_oasis['Target'] = df_oasis['CDR'].apply(lambda x: 1 if x > 0 else 0)
     feat_c = ['M/F', 'Age', 'EDUC', 'SES', 'eTIV', 'nWBV']
@@ -185,39 +187,95 @@ if app_mode == "🏠 系統首頁":
 # --- PAGE 2: AI Chatbot ---
 elif app_mode == "🤖 AI 衛教諮詢":
     st.title("🤖 AI 衛教諮詢助手")
-    st.info("💡 提示：您可以問我關於「阿茲海默症」的相關問題，例如症狀、預防、治療、就醫資訊或網站操作方法。")
+    st.info("💡 提示：您可以手動輸入問題，或點擊下方標籤快速提問。")
     
-    if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "您好！我是您的健康管家。請問今天有什麼我可以幫您的嗎？"}]
+    # --- 新增功能：快速問答按鈕區塊 ---
+    st.markdown("#### ⚡ 快速提問")
+    cols = st.columns(4)
+    quick_questions = [
+        "阿茲海默症是什麼？",
+        "預防失智的飲食建議",
+        "該去掛哪一科？",
+        "網站操作指南"
+    ]
+    
+    # 處理按鈕點擊狀態
+    if "quick_q" not in st.session_state:
+        st.session_state.quick_q = None
 
+    for i, q in enumerate(quick_questions):
+        if cols[i].button(q, use_container_width=True):
+            st.session_state.quick_q = q
+
+    # --- 初始化對話紀錄 ---
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "assistant", "content": "您好！我是 AD-AI Pro 衛教管家。您可以點擊上方按鈕，或在下方輸入框詢問關於大腦健康的任何問題！"}]
+
+    # 顯示歷史訊息
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("請輸入您的問題..."):
-        st.chat_message("user").markdown(prompt)
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    # --- 接收使用者輸入 (來自文字框或快速按鈕) ---
+    prompt = st.chat_input("請輸入您的問題...")
 
-        q = prompt.lower()
-        if any(x in q for x in ["操作", "怎麼用", "功能", "教學"]):
-            reply = "🛠️ **網站操作指南**：\n請點擊左上角的 **「>」符號** 展開側邊欄選單，您會看到以下功能：\n1. **生活雷達篩檢**：輸入您的日常習慣，評估風險。\n2. **臨床落點分析**：輸入 MRI 數據，查看腦部健康落點。\n3. **數據驗證中心**：查看本系統的準確度數據。"
-        elif any(x in q for x in ["阿茲海默", "失智", "老人痴呆", "什麼是"]):
-            reply = "🧠 **疾病簡介**：\n阿茲海默症 (Alzheimer's Disease) 是一種不可逆的大腦神經退化疾病。主要病理特徵為大腦內 **β-類澱粉蛋白斑塊** 堆積與 **Tau 蛋白纏結**，導致神經元死亡與腦部萎縮 (Brain Atrophy)。"
-        elif any(x in q for x in ["飲食", "吃", "營養", "食物"]):
-            reply = "🥗 **飲食建議 (MIND Diet)**：\n研究證實 MIND 飲食可降低失智風險。建議多攝取：\n- **綠色蔬菜**、**堅果**、**莓果類**、**全穀類**、**魚類**。\n- 應避免：紅肉、奶油、起司、甜點、油炸食品。"
-        elif any(x in q for x in ["運動", "跑步", "活動"]):
-            reply = "🏃 **運動處方**：\n建議每週至少 150 分鐘中等強度有氧運動。運動能促進 **BDNF (腦源性神經滋養因子)** 分泌，增加海馬迴體積，增強記憶力。"
-        elif any(x in q for x in ["睡眠", "睡覺", "失眠"]):
-            reply = "😴 **睡眠與大腦排毒**：\n大腦在睡眠時會啟動 **「膠淋巴系統 (Glymphatic System)」** 清除代謝廢物。長期睡眠不足會導致毒素堆積，增加失智風險。建議每晚睡滿 7-8 小時。"
-        elif any(x in q for x in ["診所", "掛號", "看醫生", "醫院", "科別"]):
-            reply = "🏥 **就醫指引**：\n建議掛 **「神經內科」** 或 **「身心科」**。各大醫學中心皆設有「記憶門診」，可提供認知測驗 (MMSE) 與腦部影像檢查 (MRI)。"
-        elif any(x in q for x in ["費用", "錢", "健保", "自費"]):
-            reply = "💰 **費用資訊**：\n健保給付大部分的門診與基本檢查。高階自費項目如 **類澱粉蛋白 PET 掃描** 可能需數萬元，建議諮詢主治醫師。"
-        elif any(x in q for x in ["你好", "嗨", "早安", "謝謝"]):
-            reply = "😊 您好！很高興能為您服務。若有任何關於大腦健康的問題，歡迎隨時提問！"
+    if prompt or st.session_state.quick_q:
+        # 決定輸入來源，處理完按鈕狀態後清空
+        current_input = prompt if prompt else st.session_state.quick_q
+        st.session_state.quick_q = None 
+
+        # 顯示並儲存使用者提問
+        st.chat_message("user").markdown(current_input)
+        st.session_state.messages.append({"role": "user", "content": current_input})
+
+        # --- 新增功能：正則表達式 (Regex) 模糊比對與結構化回覆 ---
+        q_lower = current_input.lower()
+        reply = ""
+
+        if re.search(r'(操作|怎麼用|功能|教學|指南)', q_lower):
+            reply = """🛠️ **網站操作指南**：
+請點擊左上角的 **「>」符號** 展開側邊欄選單，您會看到以下核心功能：
+* **🥗 生活雷達篩檢**：輸入您的日常作息（睡眠、飲食等），系統會產出您的健康雷達圖與風險評估。
+* **🏥 臨床落點分析**：輸入 MRI 相關數據 (nWBV, eTIV 等)，系統會將您的狀況投影至母群體中，查看腦部萎縮落點。
+* **📊 數據驗證中心**：查看本系統隨機森林模型的 ROC 曲線與特徵重要性分析。"""
+
+        elif re.search(r'(阿茲海默|失智|痴呆|什麼是|介紹)', q_lower):
+            reply = """🧠 **疾病簡介：阿茲海默症 (AD)**
+阿茲海默症是一種不可逆的神經退化性疾病，佔所有失智症的 60-80%。
+* **核心病理**：大腦內 **β-類澱粉蛋白 (Amyloid beta)** 異常堆積與 **Tau 蛋白** 神經纖維纏結，導致神經元受損與腦萎縮 (Brain Atrophy)。
+* **早期徵兆**：短期記憶力衰退、對時間/地點感到混淆、判斷力下降。"""
+
+        elif re.search(r'(飲食|吃|營養|食物|預防)', q_lower):
+            reply = """🥗 **預防失智飲食建議：MIND 飲食法**
+結合地中海與得舒飲食的特色，被醫學界證實能有效延緩認知衰退：
+
+| ✅ 建議多攝取 | ❌ 應盡量避免 |
+| :--- | :--- |
+| 綠葉蔬菜 (每週≥6份) | 紅肉與加工肉品 (每週<4份) |
+| 莓果類 (每週≥2份) | 奶油與人造奶油 (每日<1湯匙) |
+| 堅果、全穀物、魚類、橄欖油 | 起司、油炸食品、精緻甜點 |"""
+
+        elif re.search(r'(運動|跑步|活動)', q_lower):
+            reply = """🏃 **運動處方**：
+建議每週至少 150 分鐘中等強度有氧運動。規律運動能促進 **BDNF (腦源性神經滋養因子)** 分泌，增加海馬迴體積，增強記憶力。"""
+
+        elif re.search(r'(睡眠|睡覺|失眠)', q_lower):
+            reply = """😴 **睡眠與大腦排毒**：
+大腦在睡眠時會啟動 **「膠淋巴系統 (Glymphatic System)」** 清除代謝廢物。長期睡眠不足會導致毒素堆積，增加失智風險。建議每晚睡滿 7-8 小時。"""
+
+        elif re.search(r'(診所|掛號|看醫生|醫院|科別|去哪)', q_lower):
+            reply = """🏥 **就醫指引與資源**
+若您或家人出現疑似症狀，請盡速就醫檢查：
+1. **建議掛號科別**：`神經內科` 或 `精神科 (身心科)`。
+2. **記憶門診**：台灣各大醫學中心皆有設立「失智症共同照護中心」或「記憶門診」。
+3. **實用資源連結**：
+   * [台灣失智症協會 (TADA)](http://www.tada2002.org.tw/)
+   * 衛福部失智症關懷專線：`0800-474-580` (失智時，我幫您)"""
+
         else:
-            reply = "🤡 抱歉，我可以回答關於「疾病介紹、飲食、運動、睡眠、就醫、費用、網站操作」等問題。請試著問：「這個網站怎麼用？」或「要去哪裡看醫生？」"
+            reply = "💡 **AI 提示**：抱歉，我目前還在學習中。您可以嘗試點擊上方的**快速提問按鈕**，或是詢問關於**「阿茲海默症介紹」**、**「預防飲食」**、**「建議就醫科別」** 等關鍵字！"
 
+        # 顯示並儲存 AI 回覆
         with st.chat_message("assistant"):
             st.markdown(reply)
         st.session_state.messages.append({"role": "assistant", "content": reply})
