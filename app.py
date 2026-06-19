@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import random
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 import re
@@ -301,25 +302,39 @@ elif app_mode == "🥗 生活雷達篩檢":
         st.divider()
         st.subheader("🧠 臨床級認知功能測驗 (MoCA 模擬)")
         
-        # 初始化測驗狀態與計分
+        # 定義大詞彙庫
+        FULL_WORD_BANK = ["面孔", "天鵝絨", "教堂", "雛菊", "紅色", "畫筆", "蘋果", "硬幣", 
+                          "桌子", "火車", "相機", "雨傘", "鞋子", "海洋", "時鐘", "香蕉", 
+                          "大象", "精靈", "月亮", "抗體", "鍵盤", "玫瑰", "鋼琴"]
+
+        # 初始化測驗狀態與隨機題庫
         if 'cog_stage' not in st.session_state:
             st.session_state.cog_stage = 0
-            st.session_state.cog_score = 8.0 # 預設分數
+            st.session_state.cog_score = 8.0
             st.session_state.q2_score = 0
             st.session_state.q3_score = 0
             st.session_state.q4_score = 0
+            
+            # 隨機抽取 5 個目標詞彙
+            st.session_state.target_words = random.sample(FULL_WORD_BANK, 5)
+            # 準備第 4 關的選項 (5個對的 + 5個錯的，並打亂順序)
+            decoys = random.sample([w for w in FULL_WORD_BANK if w not in st.session_state.target_words], 5)
+            options = st.session_state.target_words + decoys
+            random.shuffle(options)
+            st.session_state.recall_options = options
 
         # 狀態 0：測驗說明
         if st.session_state.cog_stage == 0:
-            st.info("本測驗參考 MoCA (蒙特利爾認知評估) 設計，包含注意力、計算力與延遲回憶，將取代主觀的「記憶自評」。")
-            if st.button("開始臨床級測驗"):
+            st.info("本測驗參考 MoCA (蒙特利爾認知評估) 設計，每次測驗將隨機產生題庫，以避免學習效應。")
+            if st.button("開始隨機測驗"):
                 st.session_state.cog_stage = 1
                 st.rerun()
                 
-        # 狀態 1：記憶銘記
+        # 狀態 1：記憶銘記 (動態顯示隨機詞彙)
         elif st.session_state.cog_stage == 1:
             st.warning("【第一關：記憶銘記】 請在心中默念並努力記住以下五個詞彙，稍後會進行測驗：")
-            st.markdown("<h3 style='text-align: center; color: #d9534f;'>面孔 &nbsp;&nbsp; 天鵝絨 &nbsp;&nbsp; 教堂 &nbsp;&nbsp; 雛菊 &nbsp;&nbsp; 紅色</h3>", unsafe_allow_html=True)
+            words_display = " &nbsp;&nbsp; ".join(st.session_state.target_words)
+            st.markdown(f"<h3 style='text-align: center; color: #d9534f;'>{words_display}</h3>", unsafe_allow_html=True)
             if st.button("我已經熟記，進入下一關"):
                 st.session_state.cog_stage = 2
                 st.rerun()
@@ -352,25 +367,31 @@ elif app_mode == "🥗 生活雷達篩檢":
                     st.session_state.cog_stage = 4
                     st.rerun()
                     
-        # 狀態 4：延遲回憶
+        # 狀態 4：延遲回憶 (動態產生混淆選項)
         elif st.session_state.cog_stage == 4:
             st.success("【第四關：延遲回憶】 最後一關！")
             st.markdown("請在下列選項中，勾選出您在 **第一關** 記住的 5 個詞彙：")
-            options = ["面孔", "玫瑰", "天鵝絨", "學校", "教堂", "綠色", "雛菊", "紅色", "手套", "火車"]
-            selected = st.multiselect("請選擇 5 個詞彙：", options)
+            selected = st.multiselect("請選擇 5 個詞彙：", st.session_state.recall_options)
             if st.button("結算總分"):
-                correct = set(["面孔", "天鵝絨", "教堂", "雛菊", "紅色"])
+                correct = set(st.session_state.target_words)
                 user_ans = set(selected)
-                st.session_state.q4_score = len(correct.intersection(user_ans)) # 1題1分，滿分5分
+                st.session_state.q4_score = len(correct.intersection(user_ans))
                 st.session_state.cog_score = st.session_state.q2_score + st.session_state.q3_score + st.session_state.q4_score
                 st.session_state.cog_stage = 5
                 st.rerun()
                 
-        # 狀態 5：測驗完成
+        # 狀態 5：測驗完成 (重置隨機詞彙)
         elif st.session_state.cog_stage == 5:
             st.success(f"✅ 測驗完成！系統計算您的客觀認知分數為：**{st.session_state.cog_score} / 10.0**")
             st.caption(f"得分細項：工作記憶({st.session_state.q2_score}/2) | 計算力({st.session_state.q3_score}/3) | 延遲回憶({st.session_state.q4_score}/5)")
             if st.button("重新測驗"):
+                # 重置題庫
+                st.session_state.target_words = random.sample(FULL_WORD_BANK, 5)
+                decoys = random.sample([w for w in FULL_WORD_BANK if w not in st.session_state.target_words], 5)
+                options = st.session_state.target_words + decoys
+                random.shuffle(options)
+                st.session_state.recall_options = options
+                # 回到起點
                 st.session_state.cog_stage = 0
                 st.rerun()
 
@@ -381,7 +402,6 @@ elif app_mode == "🥗 生活雷達篩檢":
         btn_run = st.button("生成深度分析報告")
 
     if btn_run:
-        # 如果使用者沒填完會直接用預設的 8.0 分
         input_data = [[max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]]
         prob = model_l.predict_proba(input_data)[0][1]
         if l_fam == "有": prob = min(0.99, prob * 1.3)
