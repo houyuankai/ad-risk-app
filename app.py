@@ -10,6 +10,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
 from fpdf import FPDF
+import plotly.express as px
+import plotly.graph_objects as go
 
 # ==========================================
 # 0. PDF 生成函式 (安全英文版)
@@ -479,11 +481,32 @@ elif app_mode == "🏥 臨床落點分析":
         
         with c2:
             st.subheader("📍 落點視覺化 (You are Here)")
-            fig, ax = plt.subplots(figsize=(8, 5))
-            sns.scatterplot(data=df_oasis, x='Age', y='nWBV', hue='CDR', palette='coolwarm', alpha=0.3, ax=ax)
-            ax.scatter(c_age, c_nwbv, color='red', s=250, marker='*', label='You Are Here', edgecolors='black')
-            ax.set_ylabel("nWBV (Normalized Whole Brain Volume)")
-            ax.legend(); st.pyplot(fig)
+            
+            # --- 全新升級：Plotly 動態圖表 ---
+            # 1. 建立背景母群體散佈圖 (加入 Hover 互動資訊)
+            fig = px.scatter(
+                df_oasis, x='Age', y='nWBV', color='CDR',
+                color_continuous_scale='Bluered', opacity=0.6,
+                hover_data=['MMSE', 'EDUC', 'SES'], # 滑鼠懸停顯示的詳細數據
+                labels={'nWBV': '全腦體積比 (nWBV)', 'Age': '年齡 (Age)', 'CDR': '失智等級 (CDR)'}
+            )
+            
+            # 2. 疊加使用者的「紅星落點」
+            fig.add_trace(go.Scatter(
+                x=[c_age], y=[c_nwbv],
+                mode='markers',
+                marker=dict(color='yellow', size=22, symbol='star', line=dict(color='red', width=2)),
+                name='You Are Here',
+                hovertemplate="<b>您的落點</b><br>年齡: %{x}<br>nWBV: %{y:.3f}<extra></extra>"
+            ))
+            
+            # 3. 調整圖表版面並顯示
+            fig.update_layout(
+                margin=dict(l=20, r=20, t=30, b=20),
+                legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            # --- Plotly 替換結束 ---
             
             st.markdown("""
             <div class="explanation-box">
@@ -491,7 +514,7 @@ elif app_mode == "🏥 臨床落點分析":
             <ul>
             <li><b>X軸 (Age)</b>：年齡。</li>
             <li><b>Y軸 (nWBV)</b>：全腦體積比，數值越低代表腦萎縮越嚴重。</li>
-            <li><b>背景點</b>：藍色代表健康者，紅色代表失智患者。</li>
+            <li><b>背景點</b>：藍色代表健康者，紅色代表失智患者。<b>(游標懸停可查看詳細數據)</b></li>
             <li><b>紅星 (You Are Here)</b>：您的位置。若落入右下角紅點區，代表在同年齡層中，您的腦萎縮較嚴重，風險較高。</li>
             </ul>
             </div>
