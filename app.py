@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import matplotlib.subplots
+import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 import re
 from sklearn.ensemble import RandomForestClassifier
