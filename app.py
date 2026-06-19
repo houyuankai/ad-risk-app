@@ -299,55 +299,77 @@ elif app_mode == "🥗 生活雷達篩檢":
         l_adl = st.slider("自理能力 (0-10)", 0.0, 10.0, 10.0)
         
         st.divider()
-        st.subheader("🧠 互動式記憶測驗 (取代主觀評分)")
+        st.subheader("🧠 臨床級認知功能測驗 (MoCA 模擬)")
         
-        # 初始化測驗狀態
+        # 初始化測驗狀態與計分
         if 'cog_stage' not in st.session_state:
             st.session_state.cog_stage = 0
             st.session_state.cog_score = 8.0 # 預設分數
+            st.session_state.q2_score = 0
+            st.session_state.q3_score = 0
+            st.session_state.q4_score = 0
 
         # 狀態 0：測驗說明
         if st.session_state.cog_stage == 0:
-            st.info("請點擊下方按鈕進行客觀的短期記憶測驗。")
-            if st.button("開始記憶測驗"):
+            st.info("本測驗參考 MoCA (蒙特利爾認知評估) 設計，包含注意力、計算力與延遲回憶，將取代主觀的「記憶自評」。")
+            if st.button("開始臨床級測驗"):
                 st.session_state.cog_stage = 1
                 st.rerun()
                 
-        # 狀態 1：展示詞彙
+        # 狀態 1：記憶銘記
         elif st.session_state.cog_stage == 1:
-            st.warning("請在心中默念並記住以下三個詞彙：")
-            st.markdown("<h3 style='text-align: center; color: #d9534f;'>🍎 蘋果 &nbsp;&nbsp; 🪙 硬幣 &nbsp;&nbsp; 🪑 桌子</h3>", unsafe_allow_html=True)
-            if st.button("我記住了，進入下一關"):
+            st.warning("【第一關：記憶銘記】 請在心中默念並努力記住以下五個詞彙，稍後會進行測驗：")
+            st.markdown("<h3 style='text-align: center; color: #d9534f;'>面孔 &nbsp;&nbsp; 天鵝絨 &nbsp;&nbsp; 教堂 &nbsp;&nbsp; 雛菊 &nbsp;&nbsp; 紅色</h3>", unsafe_allow_html=True)
+            if st.button("我已經熟記，進入下一關"):
                 st.session_state.cog_stage = 2
                 st.rerun()
                 
-        # 狀態 2：干擾任務 (數學題)
+        # 狀態 2：注意力與工作記憶
         elif st.session_state.cog_stage == 2:
-            st.info("干擾任務：請回答以下數學題")
-            ans = st.radio("100 減去 7 等於多少？", ["(請選擇)", "83", "93", "87", "91"])
-            if ans != "(請選擇)":
-                if st.button("確認答案"):
-                    st.session_state.cog_stage = 3
-                    st.rerun()
-                    
-        # 狀態 3：回憶測驗
-        elif st.session_state.cog_stage == 3:
-            st.success("請勾選您剛剛記住的三個詞彙：")
-            options = ["蘋果", "香蕉", "硬幣", "椅子", "桌子", "錢包"]
-            selected = st.multiselect("選擇您記得的詞彙", options)
-            if st.button("提交測驗"):
-                correct = set(["蘋果", "硬幣", "桌子"])
-                user_ans = set(selected)
-                score = len(correct.intersection(user_ans))
-                # 將答對題數(0-3)映射到雷達圖分數(1-10)
-                mapping = {3: 10.0, 2: 7.0, 1: 4.0, 0: 1.0}
-                st.session_state.cog_score = mapping[score]
-                st.session_state.cog_stage = 4
+            st.info("【第二關：工作記憶】 考驗您的注意力與暫存記憶。")
+            st.markdown("請將下列數字序列 **倒著** 輸入（例如看到 123，請輸入 321）：")
+            st.markdown("<h4 style='text-align: center; letter-spacing: 5px;'>7 2 8 5 4</h4>", unsafe_allow_html=True)
+            ans2 = st.text_input("輸入您的答案：", key="ans2")
+            if st.button("確認提交"):
+                if ans2.strip() == "45827":
+                    st.session_state.q2_score = 2
+                else:
+                    st.session_state.q2_score = 0
+                st.session_state.cog_stage = 3
                 st.rerun()
                 
-        # 狀態 4：測驗完成
+        # 狀態 3：執行與計算力
+        elif st.session_state.cog_stage == 3:
+            st.info("【第三關：計算力】 考驗您的連續執行能力。")
+            st.markdown("從 100 連續減去 7，**請減兩次**（即 100 減 7，再減 7）。請問最後的答案是多少？")
+            ans3 = st.radio("選擇答案：", ["(請選擇)", "83", "86", "79", "93"])
+            if ans3 != "(請選擇)":
+                if st.button("確認計算"):
+                    if ans3 == "86":
+                        st.session_state.q3_score = 3
+                    else:
+                        st.session_state.q3_score = 0
+                    st.session_state.cog_stage = 4
+                    st.rerun()
+                    
+        # 狀態 4：延遲回憶
         elif st.session_state.cog_stage == 4:
-            st.success(f"✅ 測驗完成！系統計算您的客觀記憶分數為：{st.session_state.cog_score} / 10.0")
+            st.success("【第四關：延遲回憶】 最後一關！")
+            st.markdown("請在下列選項中，勾選出您在 **第一關** 記住的 5 個詞彙：")
+            options = ["面孔", "玫瑰", "天鵝絨", "學校", "教堂", "綠色", "雛菊", "紅色", "手套", "火車"]
+            selected = st.multiselect("請選擇 5 個詞彙：", options)
+            if st.button("結算總分"):
+                correct = set(["面孔", "天鵝絨", "教堂", "雛菊", "紅色"])
+                user_ans = set(selected)
+                st.session_state.q4_score = len(correct.intersection(user_ans)) # 1題1分，滿分5分
+                st.session_state.cog_score = st.session_state.q2_score + st.session_state.q3_score + st.session_state.q4_score
+                st.session_state.cog_stage = 5
+                st.rerun()
+                
+        # 狀態 5：測驗完成
+        elif st.session_state.cog_stage == 5:
+            st.success(f"✅ 測驗完成！系統計算您的客觀認知分數為：**{st.session_state.cog_score} / 10.0**")
+            st.caption(f"得分細項：工作記憶({st.session_state.q2_score}/2) | 計算力({st.session_state.q3_score}/3) | 延遲回憶({st.session_state.q4_score}/5)")
             if st.button("重新測驗"):
                 st.session_state.cog_stage = 0
                 st.rerun()
@@ -359,7 +381,7 @@ elif app_mode == "🥗 生活雷達篩檢":
         btn_run = st.button("生成深度分析報告")
 
     if btn_run:
-        # 使用者可能有填沒填完測驗，如果沒填完會直接用預設的 8.0 分
+        # 如果使用者沒填完會直接用預設的 8.0 分
         input_data = [[max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]]
         prob = model_l.predict_proba(input_data)[0][1]
         if l_fam == "有": prob = min(0.99, prob * 1.3)
@@ -381,7 +403,7 @@ elif app_mode == "🥗 生活雷達篩檢":
             <div class="explanation-box">
             <b>圖表解讀與改善建議：</b><br>
             這張雷達圖顯示了您的五大健康維度。<b>面積越大代表越健康</b>。<br>
-            - <b>Memory</b>：您的記憶力評分來自剛才的客觀測驗 (蘋果/硬幣/桌子)。<br>
+            - <b>Memory</b>：您的記憶力評分來自客觀的 MoCA 模擬測驗。<br>
             - <b>Sleep < 5</b>：建議減少咖啡因攝取，建立規律作息。<br>
             - <b>Diet < 5</b>：建議參考地中海飲食，多吃蔬果與魚類。<br>
             - <b>Exercise < 5</b>：建議每週進行至少 150 分鐘的中等強度運動。
