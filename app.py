@@ -283,21 +283,83 @@ elif app_mode == "🤖 AI 衛教諮詢":
 # --- PAGE 3: 生活篩檢 ---
 elif app_mode == "🥗 生活雷達篩檢":
     st.title("🥗 生活型態風險評估")
-    st.markdown("輸入您的生活習慣，系統將生成雷達圖，並將您的數據與資料庫常模進行比較。")
+    st.markdown("輸入您的生活習慣並完成認知測驗，系統將生成雷達圖，並將您的數據與資料庫常模進行比較。")
     st.divider()
     
     c1, c2 = st.columns([1, 2])
     with c1:
-        st.subheader("📝 輸入資料")
-        l_age = st.slider("年齡", 40, 95, 65); l_gen = st.selectbox("性別", ["男", "女"])
+        st.subheader("📝 基礎資料")
+        l_age = st.slider("年齡", 40, 95, 65)
+        l_gen = st.selectbox("性別", ["男", "女"])
         l_bmi = st.slider("BMI (身體質量指數)", 15.0, 35.0, 24.0) 
         l_fam = st.radio("家族病史", ["無", "有"])
-        l_sleep = st.slider("睡眠品質 (0-10)", 0, 10, 7); l_diet = st.slider("飲食品質 (0-10)", 0, 10, 7)
-        l_act = st.slider("運動頻率 (0-10)", 0, 10, 5); l_func = st.slider("記憶自評 (0-10)", 0.0, 10.0, 8.0)
+        l_sleep = st.slider("睡眠品質 (0-10)", 0, 10, 7)
+        l_diet = st.slider("飲食品質 (0-10)", 0, 10, 7)
+        l_act = st.slider("運動頻率 (0-10)", 0, 10, 5)
         l_adl = st.slider("自理能力 (0-10)", 0.0, 10.0, 10.0)
+        
+        st.divider()
+        st.subheader("🧠 互動式記憶測驗 (取代主觀評分)")
+        
+        # 初始化測驗狀態
+        if 'cog_stage' not in st.session_state:
+            st.session_state.cog_stage = 0
+            st.session_state.cog_score = 8.0 # 預設分數
+
+        # 狀態 0：測驗說明
+        if st.session_state.cog_stage == 0:
+            st.info("請點擊下方按鈕進行客觀的短期記憶測驗。")
+            if st.button("開始記憶測驗"):
+                st.session_state.cog_stage = 1
+                st.rerun()
+                
+        # 狀態 1：展示詞彙
+        elif st.session_state.cog_stage == 1:
+            st.warning("請在心中默念並記住以下三個詞彙：")
+            st.markdown("<h3 style='text-align: center; color: #d9534f;'>🍎 蘋果 &nbsp;&nbsp; 🪙 硬幣 &nbsp;&nbsp; 🪑 桌子</h3>", unsafe_allow_html=True)
+            if st.button("我記住了，進入下一關"):
+                st.session_state.cog_stage = 2
+                st.rerun()
+                
+        # 狀態 2：干擾任務 (數學題)
+        elif st.session_state.cog_stage == 2:
+            st.info("干擾任務：請回答以下數學題")
+            ans = st.radio("100 減去 7 等於多少？", ["(請選擇)", "83", "93", "87", "91"])
+            if ans != "(請選擇)":
+                if st.button("確認答案"):
+                    st.session_state.cog_stage = 3
+                    st.rerun()
+                    
+        # 狀態 3：回憶測驗
+        elif st.session_state.cog_stage == 3:
+            st.success("請勾選您剛剛記住的三個詞彙：")
+            options = ["蘋果", "香蕉", "硬幣", "椅子", "桌子", "錢包"]
+            selected = st.multiselect("選擇您記得的詞彙", options)
+            if st.button("提交測驗"):
+                correct = set(["蘋果", "硬幣", "桌子"])
+                user_ans = set(selected)
+                score = len(correct.intersection(user_ans))
+                # 將答對題數(0-3)映射到雷達圖分數(1-10)
+                mapping = {3: 10.0, 2: 7.0, 1: 4.0, 0: 1.0}
+                st.session_state.cog_score = mapping[score]
+                st.session_state.cog_stage = 4
+                st.rerun()
+                
+        # 狀態 4：測驗完成
+        elif st.session_state.cog_stage == 4:
+            st.success(f"✅ 測驗完成！系統計算您的客觀記憶分數為：{st.session_state.cog_score} / 10.0")
+            if st.button("重新測驗"):
+                st.session_state.cog_stage = 0
+                st.rerun()
+
+        # 將測驗結果賦值給模型需要的變數
+        l_func = st.session_state.cog_score
+        
+        st.divider()
         btn_run = st.button("生成深度分析報告")
 
     if btn_run:
+        # 使用者可能有填沒填完測驗，如果沒填完會直接用預設的 8.0 分
         input_data = [[max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]]
         prob = model_l.predict_proba(input_data)[0][1]
         if l_fam == "有": prob = min(0.99, prob * 1.3)
@@ -319,6 +381,7 @@ elif app_mode == "🥗 生活雷達篩檢":
             <div class="explanation-box">
             <b>圖表解讀與改善建議：</b><br>
             這張雷達圖顯示了您的五大健康維度。<b>面積越大代表越健康</b>。<br>
+            - <b>Memory</b>：您的記憶力評分來自剛才的客觀測驗 (蘋果/硬幣/桌子)。<br>
             - <b>Sleep < 5</b>：建議減少咖啡因攝取，建立規律作息。<br>
             - <b>Diet < 5</b>：建議參考地中海飲食，多吃蔬果與魚類。<br>
             - <b>Exercise < 5</b>：建議每週進行至少 150 分鐘的中等強度運動。
@@ -349,7 +412,6 @@ elif app_mode == "🥗 生活雷達篩檢":
             fam_eng = "Yes" if l_fam == "有" else "No"
             pdf_bytes = create_pdf(f"User_{l_age}", risk_type=risk_lvl, prob=prob, factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": fam_eng})
             st.download_button("📥 下載 PDF 評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
-
 # --- PAGE 4: 臨床落點 ---
 elif app_mode == "🏥 臨床落點分析":
     st.title("🏥 臨床影像定位分析")
