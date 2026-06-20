@@ -11,16 +11,18 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_rep
 from fpdf import FPDF
 import plotly.express as px
 import plotly.graph_objects as go
-import requests
+import json
 from streamlit_lottie import st_lottie
 
-# 建立一個快取函式來載入 Lottie 動畫 (避免每次整理網頁都要重新下載)
-@st.cache_data
-def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
+# ==========================================
+# 0. 建立讀取本地端 Lottie JSON 檔案的函式
+# ==========================================
+def load_lottiefile(filepath: str):
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
         return None
-    return r.json()
 
 # ==========================================
 # 0. PDF 生成函式 (安全英文版)
@@ -195,17 +197,16 @@ if app_mode == "🏠 系統首頁":
         """, unsafe_allow_html=True)
 
     with col2:
-        # --- 全新升級：Lottie 動態大腦動畫 ---
-        # 這裡我為你準備了一個極具科技感的醫療/大腦 Lottie 動畫網址
-        lottie_brain_url = "https://lottie.host/9813dd11-13c5-4180-aa1e-0eb30f57a3e7/9f5X1Kj1W0.json"
-        lottie_brain = load_lottieurl(lottie_brain_url)
+        # --- 本地端載入 Lottie 動態大腦動畫 ---
+        # 指向你在 .devcontainer 裡的 brain.json
+        # 如果你後來把檔案移出 .devcontainer，可以將路徑改為 "brain.json"
+        lottie_brain = load_lottiefile(".devcontainer/brain.json")
         
         if lottie_brain:
             # height 可以調整動畫大小
             st_lottie(lottie_brain, height=400, key="brain_animation")
         else:
-            st.warning("動畫載入失敗，請確認網路連線。")
-        # --- Lottie 替換結束 ---
+            st.warning("動畫載入失敗，請確認 .devcontainer/brain.json 檔案是否存在。")
 
 # --- PAGE 2: AI Chatbot ---
 elif app_mode == "🤖 AI 衛教諮詢":
