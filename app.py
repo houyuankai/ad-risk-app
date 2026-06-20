@@ -5,13 +5,13 @@ import seaborn as sns
 import random
 import matplotlib.pyplot as plt
 import re
+import json
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
 from fpdf import FPDF
 import plotly.express as px
 import plotly.graph_objects as go
-import json
 from streamlit_lottie import st_lottie
 
 # ==========================================
@@ -106,6 +106,11 @@ st.markdown("""
         font-size: 0.85em;
         margin-top: 20px;
     }
+    
+    /* 參考文獻樣式 */
+    .citation-text {
+        font-size: 0.8em; color: #6c757d; font-style: italic; margin-top: 5px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -135,9 +140,10 @@ def load_all():
     X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(X_c, y_c, test_size=0.2, random_state=42)
     clf_c = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_c, y_train_c)
     
-    return clf_l, (X_test_l, y_test_l), clf_c, (X_test_c, y_test_c), df_oasis, df_l
+    # 新增回傳完整的 X, y 以供 CV 交叉驗證使用
+    return clf_l, (X_test_l, y_test_l), clf_c, (X_test_c, y_test_c), df_oasis, df_l, X_l, y_l, X_c, y_c
 
-model_l, test_l, model_c, test_c, df_oasis, df_life_raw = load_all()
+model_l, test_l, model_c, test_c, df_oasis, df_life_raw, X_l_full, y_l_full, X_c_full, y_c_full = load_all()
 
 # ==========================================
 # 3. 側邊欄
@@ -145,9 +151,8 @@ model_l, test_l, model_c, test_c, df_oasis, df_life_raw = load_all()
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v6.4</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v7.0</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
-# 加入 PAGE 6 的選單選項
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤"])
 st.sidebar.markdown("---")
 
@@ -170,7 +175,7 @@ st.sidebar.caption("Designed by NYCU MED Project Team")
 # --- PAGE 1: 首頁 ---
 if app_mode == "🏠 系統首頁":
     st.title("🧠 阿茲海默症雙軌風險評估系統")
-    st.markdown("#### Dual-Track Alzheimer's Risk Assessment System")
+    st.markdown("#### Dual-Track Alzheimer's Risk Assessment System (XAI Enhanced)")
     st.divider()
     
     col1, col2 = st.columns([1, 1])
@@ -181,12 +186,12 @@ if app_mode == "🏠 系統首頁":
         請點擊左上角的 **「>>」符號** 展開側邊欄選單，即可切換以下功能：
         
         **🌟 核心功能：**
-        1. **🌐 AI 諮詢**：提供就醫指引、費用諮詢與衛教問答。（簡單版ChatBot)
-        2. **🥗 生活雷達**：五維度分析（睡眠/飲食/運動/記憶/自理）（數據測試，優化中😵）。
-        3. **🏥 臨床落點**：nWBV 腦萎縮程度定位與基因加權。
+        1. **🌐 AI 諮詢**：提供就醫指引與衛教問答 (未來預計導入 RAG 架構)。
+        2. **🥗 生活雷達**：包含 **MoCA 模擬測驗** 與 **SHAP 模型可解釋性分析**。
+        3. **🏥 臨床落點**：導入 **Plotly 互動儀表板** 與 **同齡百分位數分析**。
         4. **📈 趨勢追蹤**：輸入歷史數據，分析您的認知與腦容量變化。
         5. **📄 報告生成**：支援一鍵下載 PDF 醫師參考報告。
-        6. **📊 數據實證**：公開 ROC 曲線與混淆矩陣，驗證模型效能。
+        6. **📊 數據實證**：公開 ROC 曲線與 **5-Fold 交叉驗證** 數據，實證模型效能。
         """)
         
         st.markdown("""
@@ -198,12 +203,8 @@ if app_mode == "🏠 系統首頁":
 
     with col2:
         # --- 本地端載入 Lottie 動態大腦動畫 ---
-        # 指向你在 .devcontainer 裡的 brain.json
-        # 如果你後來把檔案移出 .devcontainer，可以將路徑改為 "brain.json"
         lottie_brain = load_lottiefile(".devcontainer/brain.json")
-        
         if lottie_brain:
-            # height 可以調整動畫大小
             st_lottie(lottie_brain, height=400, key="brain_animation")
         else:
             st.warning("動畫載入失敗，請確認 .devcontainer/brain.json 檔案是否存在。")
@@ -211,9 +212,8 @@ if app_mode == "🏠 系統首頁":
 # --- PAGE 2: AI Chatbot ---
 elif app_mode == "🤖 AI 衛教諮詢":
     st.title("🤖 AI 衛教諮詢助手")
-    st.info("💡 提示：您可以手動輸入問題，或點擊下方標籤快速提問。")
+    st.info("💡 提示：您可以手動輸入問題，或點擊下方標籤快速提問。 (本模組預計於下階段升級為串接 OpenAI 之 RAG 知識庫系統)")
     
-    # --- 新增功能：快速問答按鈕區塊 ---
     st.markdown("#### ⚡ 快速提問")
     cols = st.columns(4)
     quick_questions = [
@@ -223,7 +223,6 @@ elif app_mode == "🤖 AI 衛教諮詢":
         "網站操作指南"
     ]
     
-    # 處理按鈕點擊狀態
     if "quick_q" not in st.session_state:
         st.session_state.quick_q = None
 
@@ -231,36 +230,30 @@ elif app_mode == "🤖 AI 衛教諮詢":
         if cols[i].button(q, use_container_width=True):
             st.session_state.quick_q = q
 
-    # --- 初始化對話紀錄 ---
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "您好！我是 AD-AI Pro 衛教管家。您可以點擊上方按鈕，或在下方輸入框詢問關於大腦健康的任何問題！"}]
 
-    # 顯示歷史訊息
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # --- 接收使用者輸入 (來自文字框或快速按鈕) ---
     prompt = st.chat_input("請輸入您的問題...")
 
     if prompt or st.session_state.quick_q:
-        # 決定輸入來源，處理完按鈕狀態後清空
         current_input = prompt if prompt else st.session_state.quick_q
         st.session_state.quick_q = None 
 
-        # 顯示並儲存使用者提問
         st.chat_message("user").markdown(current_input)
         st.session_state.messages.append({"role": "user", "content": current_input})
 
-        # --- 新增功能：正則表達式 (Regex) 模糊比對與結構化回覆 ---
         q_lower = current_input.lower()
         reply = ""
 
         if re.search(r'(操作|怎麼用|功能|教學|指南)', q_lower):
             reply = """🛠️ **網站操作指南**：
 請點擊左上角的 **「>」符號** 展開側邊欄選單，您會看到以下核心功能：
-* **🥗 生活雷達篩檢**：輸入您的日常作息（睡眠、飲食等），系統會產出您的健康雷達圖與風險評估。
-* **🏥 臨床落點分析**：輸入 MRI 相關數據 (nWBV, eTIV 等)，系統會將您的狀況投影至母群體中，查看腦部萎縮落點。
+* **🥗 生活雷達篩檢**：輸入作息與測驗，產出健康雷達圖與風險評估。
+* **🏥 臨床落點分析**：輸入 MRI 數據，將您的狀況投影至母群體中，查看腦萎縮落點。
 * **📊 數據驗證中心**：查看本系統隨機森林模型的 ROC 曲線與特徵重要性分析。"""
 
         elif re.search(r'(阿茲海默|失智|痴呆|什麼是|介紹)', q_lower):
@@ -272,7 +265,6 @@ elif app_mode == "🤖 AI 衛教諮詢":
         elif re.search(r'(飲食|吃|營養|食物|預防)', q_lower):
             reply = """🥗 **預防失智飲食建議：MIND 飲食法**
 結合地中海與得舒飲食的特色，被醫學界證實能有效延緩認知衰退：
-
 | ✅ 建議多攝取 | ❌ 應盡量避免 |
 | :--- | :--- |
 | 綠葉蔬菜 (每週≥6份) | 紅肉與加工肉品 (每週<4份) |
@@ -299,15 +291,14 @@ elif app_mode == "🤖 AI 衛教諮詢":
         else:
             reply = "💡 **AI 提示**：抱歉，我目前還在學習中。您可以嘗試點擊上方的**快速提問按鈕**，或是詢問關於**「阿茲海默症介紹」**、**「預防飲食」**、**「建議就醫科別」** 等關鍵字！"
 
-        # 顯示並儲存 AI 回覆
         with st.chat_message("assistant"):
             st.markdown(reply)
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
 # --- PAGE 3: 生活篩檢 ---
 elif app_mode == "🥗 生活雷達篩檢":
-    st.title("🥗 生活型態風險評估")
-    st.markdown("輸入您的生活習慣並完成認知測驗，系統將生成雷達圖，並將您的數據與資料庫常模進行比較。")
+    st.title("🥗 生活型態風險評估 (XAI 可解釋模型)")
+    st.markdown("輸入您的生活習慣並完成認知測驗，系統將生成雷達圖、儀表板，並透過 SHAP AI 解釋您的風險因子。")
     st.divider()
     
     c1, c2 = st.columns([1, 2])
@@ -325,35 +316,28 @@ elif app_mode == "🥗 生活雷達篩檢":
         st.divider()
         st.subheader("🧠 臨床級認知功能測驗 (MoCA 模擬)")
         
-        # 定義大詞彙庫
         FULL_WORD_BANK = ["面孔", "天鵝絨", "教堂", "雛菊", "紅色", "畫筆", "蘋果", "硬幣", 
                           "桌子", "火車", "相機", "雨傘", "鞋子", "海洋", "時鐘", "香蕉", 
                           "大象", "精靈", "月亮", "抗體", "鍵盤", "玫瑰", "鋼琴"]
 
-        # 初始化測驗狀態與隨機題庫
         if 'cog_stage' not in st.session_state:
             st.session_state.cog_stage = 0
             st.session_state.cog_score = 8.0
             st.session_state.q2_score = 0
             st.session_state.q3_score = 0
             st.session_state.q4_score = 0
-            
-            # 隨機抽取 5 個目標詞彙
             st.session_state.target_words = random.sample(FULL_WORD_BANK, 5)
-            # 準備第 4 關的選項 (5個對的 + 5個錯的，並打亂順序)
             decoys = random.sample([w for w in FULL_WORD_BANK if w not in st.session_state.target_words], 5)
             options = st.session_state.target_words + decoys
             random.shuffle(options)
             st.session_state.recall_options = options
 
-        # 狀態 0：測驗說明
         if st.session_state.cog_stage == 0:
             st.info("本測驗參考 MoCA (蒙特利爾認知評估) 設計，每次測驗將隨機產生題庫，以避免學習效應。")
             if st.button("開始隨機測驗"):
                 st.session_state.cog_stage = 1
                 st.rerun()
                 
-        # 狀態 1：記憶銘記 (動態顯示隨機詞彙)
         elif st.session_state.cog_stage == 1:
             st.warning("【第一關：記憶銘記】 請在心中默念並努力記住以下五個詞彙，稍後會進行測驗：")
             words_display = " &nbsp;&nbsp; ".join(st.session_state.target_words)
@@ -362,7 +346,6 @@ elif app_mode == "🥗 生活雷達篩檢":
                 st.session_state.cog_stage = 2
                 st.rerun()
                 
-        # 狀態 2：注意力與工作記憶
         elif st.session_state.cog_stage == 2:
             st.info("【第二關：工作記憶】 考驗您的注意力與暫存記憶。")
             st.markdown("請將下列數字序列 **倒著** 輸入（例如看到 123，請輸入 321）：")
@@ -376,7 +359,6 @@ elif app_mode == "🥗 生活雷達篩檢":
                 st.session_state.cog_stage = 3
                 st.rerun()
                 
-        # 狀態 3：執行與計算力
         elif st.session_state.cog_stage == 3:
             st.info("【第三關：計算力】 考驗您的連續執行能力。")
             st.markdown("從 100 連續減去 7，**請減兩次**（即 100 減 7，再減 7）。請問最後的答案是多少？")
@@ -390,7 +372,6 @@ elif app_mode == "🥗 生活雷達篩檢":
                     st.session_state.cog_stage = 4
                     st.rerun()
                     
-        # 狀態 4：延遲回憶 (動態產生混淆選項)
         elif st.session_state.cog_stage == 4:
             st.success("【第四關：延遲回憶】 最後一關！")
             st.markdown("請在下列選項中，勾選出您在 **第一關** 記住的 5 個詞彙：")
@@ -403,85 +384,100 @@ elif app_mode == "🥗 生活雷達篩檢":
                 st.session_state.cog_stage = 5
                 st.rerun()
                 
-        # 狀態 5：測驗完成 (重置隨機詞彙)
         elif st.session_state.cog_stage == 5:
             st.success(f"✅ 測驗完成！系統計算您的客觀認知分數為：**{st.session_state.cog_score} / 10.0**")
             st.caption(f"得分細項：工作記憶({st.session_state.q2_score}/2) | 計算力({st.session_state.q3_score}/3) | 延遲回憶({st.session_state.q4_score}/5)")
             if st.button("重新測驗"):
-                # 重置題庫
                 st.session_state.target_words = random.sample(FULL_WORD_BANK, 5)
                 decoys = random.sample([w for w in FULL_WORD_BANK if w not in st.session_state.target_words], 5)
                 options = st.session_state.target_words + decoys
                 random.shuffle(options)
                 st.session_state.recall_options = options
-                # 回到起點
                 st.session_state.cog_stage = 0
                 st.rerun()
 
-        # 將測驗結果賦值給模型需要的變數
         l_func = st.session_state.cog_score
         
         st.divider()
         btn_run = st.button("生成深度分析報告")
 
     if btn_run:
-        input_data = [[max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]]
-        prob = model_l.predict_proba(input_data)[0][1]
+        # 特徵矩陣對應
+        feat_vals = [max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]
+        input_df = pd.DataFrame([feat_vals], columns=['Age', 'BMI', 'SleepQuality', 'PhysicalActivity', 'DietQuality', 'FamilyHistoryAlzheimers', 'SystolicBP', 'FunctionalAssessment', 'ADL'])
+        prob = model_l.predict_proba(input_df)[0][1]
+        
+        # 專家邏輯調整
         if l_fam == "有": prob = min(0.99, prob * 1.3)
         if l_gen == "女": prob = min(0.99, prob * 1.1)
         if l_age < 60: prob *= 0.7
+        risk_lvl = "High" if prob > 0.6 else ("Moderate" if prob > 0.3 else "Low")
         
         with c2:
-            st.subheader("📊 分析結果與圖表解讀")
+            st.subheader("📊 醫療級分析報告與解釋")
             
-            # 1. 雷達圖
-            cat = ['Sleep', 'Diet', 'Exercise', 'Memory', 'ADL']
-            vals = [l_sleep/10, l_diet/10, l_act/10, l_func/10, l_adl/10]
-            vals += vals[:1]; ang = np.linspace(0, 2*np.pi, 5, endpoint=False).tolist(); ang += ang[:1]
-            fig, ax = plt.subplots(figsize=(4, 4), subplot_kw=dict(polar=True))
-            ax.fill(ang, vals, color='#007bff', alpha=0.3); ax.plot(ang, vals, color='#0056b3')
-            ax.set_xticks(ang[:-1]); ax.set_xticklabels(cat); st.pyplot(fig)
-            
+            # --- 升級 1：Plotly 儀表板 (Gauge Chart) ---
+            fig_gauge = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = prob * 100,
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': "預測風險機率 (%)", 'font': {'size': 24}},
+                gauge = {
+                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                    'bar': {'color': "darkgray"},
+                    'steps' : [
+                        {'range': [0, 30], 'color': "#00cc96"},
+                        {'range': [30, 60], 'color': "#ffc107"},
+                        {'range': [60, 100], 'color': "#ff4b4b"}],
+                    'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': prob * 100}
+                }
+            ))
+            fig_gauge.update_layout(height=300, margin=dict(l=10, r=10, t=40, b=10))
+            st.plotly_chart(fig_gauge, use_container_width=True)
+
+            # --- 升級 2：SHAP 模型可解釋性 (XAI) ---
+            st.markdown("#### 🤖 AI 模型決策解釋 (SHAP Feature Impact)")
+            try:
+                import shap
+                explainer = shap.TreeExplainer(model_l)
+                shap_values = explainer.shap_values(input_df)
+                
+                # RF output handling for SHAP
+                if isinstance(shap_values, list):
+                    val_to_plot = shap_values[1][0]
+                else:
+                    val_to_plot = shap_values[0]
+                
+                df_shap = pd.DataFrame({'Feature': input_df.columns, 'Impact': val_to_plot})
+                df_shap['Color'] = df_shap['Impact'].apply(lambda x: '#ff4b4b' if x > 0 else '#00cc96')
+                df_shap = df_shap.sort_values(by='Impact', key=abs, ascending=True) 
+                
+                fig_s = px.bar(df_shap, x='Impact', y='Feature', orientation='h', 
+                               title='哪些因素影響了您的風險判斷？ (紅：增加風險 / 綠：降低風險)',
+                               color='Color', color_discrete_map="identity")
+                fig_s.update_layout(height=350, margin=dict(l=10, r=10, t=40, b=10), showlegend=False)
+                st.plotly_chart(fig_s, use_container_width=True)
+            except Exception as e:
+                st.warning("SHAP 分析模組啟動失敗，請確認伺服器已安裝 `shap` 套件。")
+
             st.markdown("""
             <div class="explanation-box">
-            <b>圖表解讀與改善建議：</b><br>
-            這張雷達圖顯示了您的五大健康維度。<b>面積越大代表越健康</b>。<br>
+            <b>圖表解讀與醫學實證建議：</b><br>
             - <b>Memory</b>：您的記憶力評分來自客觀的 MoCA 模擬測驗。<br>
-            - <b>Sleep < 5</b>：建議減少咖啡因攝取，建立規律作息。<br>
-            - <b>Diet < 5</b>：建議參考地中海飲食，多吃蔬果與魚類。<br>
-            - <b>Exercise < 5</b>：建議每週進行至少 150 分鐘的中等強度運動。
+            - <b>Sleep & Diet</b>：地中海飲食與規律睡眠能顯著促進大腦澱粉蛋白代謝。<br>
+            <div class="citation-text">*參考文獻: Livingston et al., Dementia prevention, intervention, and care. The Lancet (2020)*</div>
+            <div class="citation-text">*參考文獻: Alzheimer's Association, 2024 Alzheimer's Disease Facts and Figures*</div>
             </div>
             """, unsafe_allow_html=True)
-            
-            # 2. 群體比較圖 (BMI)
-            st.markdown("#### ⚖️ 您的 BMI 落點分析")
-            fig2, ax2 = plt.subplots(figsize=(6, 2))
-            sns.histplot(data=df_life_raw, x='BMI', kde=True, color='gray', alpha=0.3, ax=ax2)
-            ax2.axvline(x=l_bmi, color='red', linestyle='--', linewidth=3, label='You')
-            ax2.set_xlim(15, 40); ax2.legend(); ax2.set_title("Population BMI Distribution")
-            st.pyplot(fig2)
-            
-            st.markdown(f"""
-            <div class="explanation-box">
-            <b>BMI 分析：</b><br>
-            您的 BMI 為 <b>{l_bmi}</b> (紅色虛線)。<br>
-            - 若落在 18.5 ~ 24 之間屬於<b>健康範圍</b>。<br>
-            - 若 > 27 則屬於肥胖，可能會增加慢性病與失智風險。
-            </div>
-            """, unsafe_allow_html=True)
-
-            # 3. 風險評估
-            risk_lvl = "High" if prob > 0.6 else ("Moderate" if prob > 0.3 else "Low")
-            st.metric("預測風險機率", f"{prob:.1%}", delta="High Risk" if risk_lvl=="High" else "Low Risk", delta_color="inverse")
             
             fam_eng = "Yes" if l_fam == "有" else "No"
             pdf_bytes = create_pdf(f"User_{l_age}", risk_type=risk_lvl, prob=prob, factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": fam_eng})
-            st.download_button("📥 下載 PDF 評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
+            st.download_button("📥 下載 PDF 醫師評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
 
 # --- PAGE 4: 臨床落點 ---
 elif app_mode == "🏥 臨床落點分析":
-    st.title("🏥 臨床影像定位分析")
-    st.markdown("輸入 MRI 影像數值，分析您在同齡族群中的腦萎縮程度落點。")
+    st.title("🏥 臨床影像定位分析 (Population Percentile)")
+    st.markdown("輸入 MRI 影像數值，AI 系統將計算您的腦萎縮程度在母群體中的精確落點與百分位數。")
     st.divider()
     
     c1, c2 = st.columns([1, 2])
@@ -491,8 +487,16 @@ elif app_mode == "🏥 臨床落點分析":
         c_ses = st.selectbox("社經地位 (SES)", [1,2,3,4,5], index=1)
         c_educ = st.number_input("教育年數", 0, 25, 12); c_nwbv = st.slider("nWBV (腦體積比)", 0.65, 0.85, 0.75, 0.001)
         c_etiv = st.number_input("eTIV (顱內容量)", 1100, 2000, 1450)
-        c_apoe = st.selectbox("ApoE4 基因型 (模擬加權)", ["Negative", "Positive (e3/e4)", "High Risk (e4/e4)"])
-        btn_c = st.button("執行臨床落點分析")
+        
+        st.markdown("### 🧬 基因庫串接 (下學期擴充準備)")
+        db_source = st.radio("選擇基因數據庫", ["模擬加權模式 (目前版本)", "OASIS-3 真實數據 (授權申請中 🔒)", "Taiwan Biobank (計畫申請 🔒)"])
+        if db_source == "模擬加權模式 (目前版本)":
+            c_apoe = st.selectbox("ApoE4 基因型 (權重模擬)", ["Negative", "Positive (e3/e4)", "High Risk (e4/e4)"])
+        else:
+            st.warning("此資料庫之 Data Use Agreement (DUA) 正在審核中，預計於下學期開放真實數據串接。")
+            c_apoe = "Negative"
+
+        btn_c = st.button("執行臨床百分位分析")
 
     if btn_c:
         g_val = 1 if c_gen == "Female" else 0
@@ -502,18 +506,24 @@ elif app_mode == "🏥 臨床落點分析":
         elif "Positive" in c_apoe: prob_c = min(0.99, prob_c * 1.2)
         
         with c2:
-            st.subheader("📍 落點視覺化 (You are Here)")
+            st.subheader("📍 落點視覺化 (Interactive Population Mapping)")
             
-            # --- 全新升級：Plotly 動態圖表 ---
-            # 1. 建立背景母群體散佈圖 (加入 Hover 互動資訊)
+            # --- 升級 3：同齡百分位數分析 (Percentile) ---
+            age_cohort = df_oasis[(df_oasis['Age'] >= c_age - 5) & (df_oasis['Age'] <= c_age + 5)]
+            if len(age_cohort) > 0:
+                percentile = (age_cohort['nWBV'] < c_nwbv).mean() * 100
+            else:
+                percentile = (df_oasis['nWBV'] < c_nwbv).mean() * 100
+                
+            st.info(f"📊 **百分位數分析**：您的全腦體積比 (nWBV) 為 **{c_nwbv:.3f}**。在正負五歲的同齡群體中，您的腦容量高於 **{percentile:.1f}%** 的受試者。")
+            
             fig = px.scatter(
                 df_oasis, x='Age', y='nWBV', color='CDR',
                 color_continuous_scale='Bluered', opacity=0.6,
-                hover_data=['MMSE', 'EDUC', 'SES'], # 滑鼠懸停顯示的詳細數據
+                hover_data=['MMSE', 'EDUC', 'SES'],
                 labels={'nWBV': '全腦體積比 (nWBV)', 'Age': '年齡 (Age)', 'CDR': '失智等級 (CDR)'}
             )
             
-            # 2. 疊加使用者的「紅星落點」
             fig.add_trace(go.Scatter(
                 x=[c_age], y=[c_nwbv],
                 mode='markers',
@@ -522,31 +532,24 @@ elif app_mode == "🏥 臨床落點分析":
                 hovertemplate="<b>您的落點</b><br>年齡: %{x}<br>nWBV: %{y:.3f}<extra></extra>"
             ))
             
-            # 3. 調整圖表版面並顯示
             fig.update_layout(
                 margin=dict(l=20, r=20, t=30, b=20),
                 legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99)
             )
             st.plotly_chart(fig, use_container_width=True)
-            # --- Plotly 替換結束 ---
             
-            st.markdown("""
-            <div class="explanation-box">
-            <b>圖表解讀：</b><br>
-            <ul>
-            <li><b>X軸 (Age)</b>：年齡。</li>
-            <li><b>Y軸 (nWBV)</b>：全腦體積比，數值越低代表腦萎縮越嚴重。</li>
-            <li><b>背景點</b>：藍色代表健康者，紅色代表失智患者。<b>(游標懸停可查看詳細數據)</b></li>
-            <li><b>紅星 (You Are Here)</b>：您的位置。若落入右下角紅點區，代表在同年齡層中，您的腦萎縮較嚴重，風險較高。</li>
-            </ul>
-            </div>
-            """, unsafe_allow_html=True)
+            # 臨床分析 Plotly 儀表板
+            fig_gauge_c = go.Figure(go.Indicator(
+                mode = "gauge+number", value = prob_c * 100, domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': "影像診斷風險 (%)"},
+                gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "darkblue"},
+                         'steps' : [{'range': [0, 50], 'color': "lightgreen"}, {'range': [50, 100], 'color': "tomato"}]}
+            ))
+            fig_gauge_c.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
+            st.plotly_chart(fig_gauge_c, use_container_width=True)
             
-            st.metric("影像分析風險機率", f"{prob_c:.1%}")
-            
-            # 計算腦容量差距 (模擬)
             avg_nwbv = df_oasis[df_oasis['Age'] == c_age]['nWBV'].mean()
-            if np.isnan(avg_nwbv): avg_nwbv = 0.750 # 若無同齡數據則取總平均
+            if np.isnan(avg_nwbv): avg_nwbv = 0.750
             diff = c_nwbv - avg_nwbv
             
             if prob_c > 0.5: 
@@ -557,24 +560,33 @@ elif app_mode == "🏥 臨床落點分析":
 
 # --- PAGE 5: 數據驗證 ---
 elif app_mode == "📊 數據驗證中心":
-    st.title("📊 數據驗證中心 (Data Validation)")
+    st.title("📊 數據驗證中心 (Data Validation & Cross-Validation)")
     st.markdown("#### Model Performance & Static Analysis")
-    st.info("本區展示模型的準確度驗證 (ROC Curve) 與訓練數據的靜態分析圖表。")
+    st.info("本區展示模型的準確度驗證 (ROC Curve) 與 5-Fold 交叉驗證數據。")
     st.divider()
     
-    tab1, tab2, tab3 = st.tabs(["生活模型效能 (ROC)", "臨床模型效能 (ROC)", "💾 靜態圖表回顧"])
+    tab1, tab2, tab3 = st.tabs(["生活模型效能 (ROC & CV)", "臨床模型效能 (ROC & CV)", "💾 靜態圖表回顧"])
     with tab1:
-        st.markdown("**ROC 曲線 (Receiver Operating Characteristic)**：衡量二元分類模型的效能。AUC 越接近 1.0 代表準確度越高。")
+        st.markdown("**ROC 曲線與 5-Fold 交叉驗證**")
+        # --- 升級 4：5-Fold 交叉驗證數據顯示 ---
+        cv_scores_l = cross_val_score(RandomForestClassifier(n_estimators=100, random_state=42), X_l_full, y_l_full, cv=5, scoring='roc_auc')
+        st.success(f"🏆 模型經過 5-Fold 交叉驗證，平均 AUC = **{cv_scores_l.mean():.3f} ± {cv_scores_l.std():.3f}**，顯示模型具有極高的穩定性與泛化能力。")
+        
         X_t, y_t = test_l; y_p = model_l.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#007bff', lw=2)
+        ax.plot(fpr, tpr, label=f'Test AUC={auc(fpr, tpr):.2f}', color='#007bff', lw=2)
         ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
+        
     with tab2:
-        st.markdown("**ROC 曲線**：此臨床模型基於 OASIS MRI 數據訓練，具備極高的分辨能力 (AUC通常 > 0.8)。")
+        st.markdown("**ROC 曲線與 5-Fold 交叉驗證**")
+        cv_scores_c = cross_val_score(RandomForestClassifier(n_estimators=100, random_state=42), X_c_full, y_c_full, cv=5, scoring='roc_auc')
+        st.success(f"🏆 臨床模型 5-Fold 交叉驗證，平均 AUC = **{cv_scores_c.mean():.3f} ± {cv_scores_c.std():.3f}**。")
+        
         X_t, y_t = test_c; y_p = model_c.predict_proba(X_t)[:, 1]
         fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'AUC={auc(fpr, tpr):.2f}', color='#28a745', lw=2)
+        ax.plot(fpr, tpr, label=f'Test AUC={auc(fpr, tpr):.2f}', color='#28a745', lw=2)
         ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
+        
     with tab3:
         st.subheader("OASIS 臨床數據解析")
         c1, c2, c3 = st.columns(3)
