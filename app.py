@@ -4,7 +4,6 @@ import numpy as np
 import seaborn as sns
 import random
 import matplotlib.pyplot as plt
-import matplotlib.pyplot as plt
 import re
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
@@ -136,7 +135,8 @@ except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.pn
 
 st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v6.4</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
-app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心"])
+# 加入 PAGE 6 的選單選項
+app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤"])
 st.sidebar.markdown("---")
 
 # 側欄免責
@@ -168,12 +168,13 @@ if app_mode == "🏠 系統首頁":
         **🔍 網站操作指南：**
         請點擊左上角的 **「>>」符號** 展開側邊欄選單，即可切換以下功能：
         
-        **🌟 五大核心功能：**
+        **🌟 核心功能：**
         1. **🌐 AI 諮詢**：提供就醫指引、費用諮詢與衛教問答。（簡單版ChatBot)
         2. **🥗 生活雷達**：五維度分析（睡眠/飲食/運動/記憶/自理）（數據測試，優化中😵）。
         3. **🏥 臨床落點**：nWBV 腦萎縮程度定位與基因加權。
-        4. **📄 報告生成**：支援一鍵下載 PDF 醫師參考報告。
-        5. **📊 數據實證**：公開 ROC 曲線與混淆矩陣，驗證模型效能。
+        4. **📈 趨勢追蹤**：輸入歷史數據，分析您的認知與腦容量變化。
+        5. **📄 報告生成**：支援一鍵下載 PDF 醫師參考報告。
+        6. **📊 數據實證**：公開 ROC 曲線與混淆矩陣，驗證模型效能。
         """)
         
         st.markdown("""
@@ -456,6 +457,7 @@ elif app_mode == "🥗 生活雷達篩檢":
             fam_eng = "Yes" if l_fam == "有" else "No"
             pdf_bytes = create_pdf(f"User_{l_age}", risk_type=risk_lvl, prob=prob, factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": fam_eng})
             st.download_button("📥 下載 PDF 評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
+
 # --- PAGE 4: 臨床落點 ---
 elif app_mode == "🏥 臨床落點分析":
     st.title("🏥 臨床影像定位分析")
@@ -578,3 +580,73 @@ elif app_mode == "📊 數據驗證中心":
         with c6: 
             st.image("csv3_bar.png", use_container_width=True)
             st.caption("▲ **生活因子權重**：顯示「功能性評估」與「ADL」對預測結果影響最大。")
+
+# --- PAGE 6: 縱向追蹤 ---
+elif app_mode == "📈 縱向趨勢追蹤":
+    st.title("📈 縱向健康趨勢追蹤 (Longitudinal Analysis)")
+    st.markdown("輸入您近三年的認知分數 (MMSE) 與腦容量 (nWBV) 變化，系統將自動繪製趨勢圖並進行異常偵測。")
+    st.divider()
+
+    # 版面分為左右：左邊輸入數據，右邊顯示圖表
+    c1, c2 = st.columns([1, 2])
+    
+    with c1:
+        st.subheader("🗓️ 歷史數據輸入")
+        
+        # 假設最近三年為 2024, 2025, 2026
+        years = ['2024', '2025', '2026 (今年)']
+        
+        st.markdown("**認知測驗分數 (MMSE, 滿分30)**")
+        m_y1 = st.number_input(f"{years[0]} MMSE", 0, 30, 29)
+        m_y2 = st.number_input(f"{years[1]} MMSE", 0, 30, 28)
+        m_y3 = st.number_input(f"{years[2]} MMSE", 0, 30, 25)
+        
+        st.markdown("**全腦體積比 (nWBV)**")
+        n_y1 = st.number_input(f"{years[0]} nWBV", 0.600, 0.900, 0.780, format="%.3f")
+        n_y2 = st.number_input(f"{years[1]} nWBV", 0.600, 0.900, 0.775, format="%.3f")
+        n_y3 = st.number_input(f"{years[2]} nWBV", 0.600, 0.900, 0.750, format="%.3f")
+
+        btn_track = st.button("生成趨勢追蹤報告")
+
+    with c2:
+        if btn_track:
+            st.subheader("📊 趨勢視覺化與臨床預警")
+            
+            # 建立作圖用的 DataFrame
+            df_trend = pd.DataFrame({
+                '年份': ['2024', '2025', '2026'],
+                'MMSE': [m_y1, m_y2, m_y3],
+                'nWBV': [n_y1, n_y2, n_y3]
+            })
+
+            # 使用 Tabs 分開顯示兩種圖表
+            tab_m, tab_n = st.tabs(["MMSE 認知趨勢", "nWBV 腦容量趨勢"])
+            
+            with tab_m:
+                fig_m = px.line(df_trend, x='年份', y='MMSE', markers=True, 
+                                title='MMSE 分數變化趨勢',
+                                range_y=[15, 30],
+                                text='MMSE')
+                fig_m.update_traces(textposition="bottom right", line=dict(color='orange', width=4), marker=dict(size=12))
+                st.plotly_chart(fig_m, use_container_width=True)
+                
+                # MMSE 臨床預警邏輯 (一年掉超過2分，或低於26分)
+                if (m_y2 - m_y3) >= 3 or m_y3 < 26:
+                    st.error("🚨 **系統預警：** 您的 MMSE 分數在近期出現顯著下滑，可能代表有輕度認知障礙 (MCI) 或病程加速的風險，強烈建議安排神經內科詳細評估。")
+                else:
+                    st.success("🟢 **狀態穩定：** 您的認知分數目前維持在穩定區間。")
+
+            with tab_n:
+                fig_n = px.line(df_trend, x='年份', y='nWBV', markers=True, 
+                                title='nWBV 腦容量變化趨勢',
+                                range_y=[0.650, 0.850],
+                                text='nWBV')
+                fig_n.update_traces(textposition="top right", line=dict(color='blue', width=4), marker=dict(size=12))
+                st.plotly_chart(fig_n, use_container_width=True)
+                
+                # nWBV 臨床預警邏輯 (萎縮速度過快)
+                drop_rate = (n_y1 - n_y3) / n_y1
+                if drop_rate > 0.02: # 兩年內萎縮超過 2%
+                    st.warning(f"⚠️ **系統預警：** 您的腦容量在兩年內萎縮了約 {drop_rate:.1%}，此速度高於正常老化預期，需持續追蹤是否有神經退化現象。")
+                else:
+                    st.success("🟢 **狀態穩定：** 您的腦容量變化符合正常生理預期。")
