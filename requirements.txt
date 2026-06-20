@@ -6,3 +6,5 @@ matplotlib
 scikit-learn
 fpdf
 plotly
+streamlit-lottie
+requests
