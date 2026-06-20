@@ -153,10 +153,7 @@ st.sidebar.markdown("---")
 with st.sidebar.expander("⚠️ 免責聲明 "):
     st.markdown("""
     本系統為學術專題研究原型。
-    - **生活數據**：使用 Kaggle 合成數據集，僅供模型驗證，會於未來優化，擬定引入真實數據補強。
-    - **臨床數據**：使用 OASIS 公開數據集，ApoE4及遺傳暫時透過加權模擬，會於未來優化。
-    - **數據驗證中心**：同上。
-    - **結果用途**：僅供教學與研究參考，**非醫療診斷依據** !!
+    - **結果用途**：本系統分析結果僅供教學與學術研究參考，**非正式醫療診斷依據**，若有實際醫療需求請尋求專業醫師協助。
     """)
 
 st.sidebar.caption("Designed by NYCU MED Project Team")
@@ -173,13 +170,13 @@ if app_mode == "🏠 系統首頁":
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.info("👋 **歡迎使用 AZ雙軌評估系統 測試版!** 😱")
+        st.info("👋 **歡迎使用 AZ雙軌評估系統!** 😱")
         st.markdown("""
         **🔍 網站操作指南：**
         請點擊左上角的 **「>>」符號** 展開側邊欄選單，即可切換以下功能：
         
         **🌟 核心功能：**
-        1. **🌐 AI 諮詢**：提供就醫指引與衛教問答 (未來預計導入 RAG 架構)。
+        1. **🌐 AI 諮詢**：提供就醫指引與衛教問答。
         2. **🥗 生活雷達**：包含 **MoCA 模擬測驗** 與 **SHAP 模型可解釋性分析**。
         3. **🏥 臨床落點**：導入 **Plotly 互動儀表板** 與 **同齡百分位數分析**。
         4. **📈 趨勢追蹤**：輸入歷史數據，分析您的認知與腦容量變化。
@@ -189,8 +186,8 @@ if app_mode == "🏠 系統首頁":
         
         st.markdown("""
         <div class="disclaimer-box">
-        ⚠️ <b>注意：數據限制與免責聲明</b><br>
-        本系統之「生活型態數據」採用合成資料集進行模型訓練，「臨床數據」則基於 OASIS 歷史資料。ApoE4 基因分析功能目前為模擬加權，尚未串接真實基因庫。分析結果僅供學術研究參考。
+        ⚠️ <b>免責聲明</b><br>
+        本系統為學術專題研究原型，分析結果僅供教學與研究參考，非正式醫療診斷依據。
         </div>
         """, unsafe_allow_html=True)
 
@@ -204,7 +201,7 @@ if app_mode == "🏠 系統首頁":
 # --- PAGE 2: AI Chatbot ---
 elif app_mode == "🤖 AI 衛教諮詢":
     st.title("🤖 AI 衛教諮詢助手")
-    st.info("💡 提示：您可以手動輸入問題，或點擊下方標籤快速提問。 (本模組預計於下階段升級為串接 OpenAI 之 RAG 知識庫系統)")
+    st.info("💡 提示：您可以手動輸入問題，或點擊下方標籤快速提問。")
     
     st.markdown("#### ⚡ 快速提問")
     cols = st.columns(4)
@@ -425,14 +422,13 @@ elif app_mode == "🥗 生活雷達篩檢":
             fig_gauge.update_layout(height=300, margin=dict(l=10, r=10, t=40, b=10))
             st.plotly_chart(fig_gauge, use_container_width=True)
 
-            # --- SHAP 模型可解釋性 (XAI) (已清除重複並強化壓扁機制) ---
+            # --- SHAP 模型可解釋性 (XAI) ---
             st.markdown("#### 🤖 AI 模型決策解釋 (SHAP Feature Impact)")
             try:
                 import shap
                 explainer = shap.TreeExplainer(model_l)
                 shap_out = explainer.shap_values(input_df)
                 
-                # 處理不同 sklearn 與 shap 版本帶來的陣列結構差異
                 if isinstance(shap_out, list):
                     vals = np.array(shap_out[1])
                 elif len(np.shape(shap_out)) == 3:
@@ -440,10 +436,8 @@ elif app_mode == "🥗 生活雷達篩檢":
                 else:
                     vals = np.array(shap_out)
                 
-                # 🌟 強制將資料壓扁成 1D，確保 pandas DataFrame 不會報錯
                 val_to_plot = vals.flatten()
                 
-                # 確保長度一致 (防呆機制)
                 if len(val_to_plot) != len(input_df.columns):
                     val_to_plot = val_to_plot[:len(input_df.columns)]
                 
@@ -458,7 +452,7 @@ elif app_mode == "🥗 生活雷達篩檢":
                 st.plotly_chart(fig_s, use_container_width=True)
             except Exception as e:
                 st.error(f"🔍 系統攔截到真實錯誤：{str(e)}")
-                st.warning("👉 如果上面寫著 'No module named shap'，代表伺服器還在偷懶沒安裝。請點擊右下角 Manage app -> 點擊右上角三個點 ⋮ -> 選擇 Reboot app 強制重啟。")
+                st.warning("👉 若顯示 'No module named shap'，請點擊右下角 Manage app -> 點擊右上角三個點 ⋮ -> 選擇 Reboot app 強制重啟。")
 
             st.markdown("""
             <div class="explanation-box">
@@ -488,13 +482,8 @@ elif app_mode == "🏥 臨床落點分析":
         c_educ = st.number_input("教育年數", 0, 25, 12); c_nwbv = st.slider("nWBV (腦體積比)", 0.65, 0.85, 0.75, 0.001)
         c_etiv = st.number_input("eTIV (顱內容量)", 1100, 2000, 1450)
         
-        st.markdown("### 🧬 基因庫串接 (下學期擴充準備)")
-        db_source = st.radio("選擇基因數據庫", ["模擬加權模式 (目前版本)", "OASIS-3 真實數據 (授權申請中 🔒)", "Taiwan Biobank (計畫申請 🔒)"])
-        if db_source == "模擬加權模式 (目前版本)":
-            c_apoe = st.selectbox("ApoE4 基因型 (權重模擬)", ["Negative", "Positive (e3/e4)", "High Risk (e4/e4)"])
-        else:
-            st.warning("此資料庫之 Data Use Agreement (DUA) 正在審核中，預計於下學期開放真實數據串接。")
-            c_apoe = "Negative"
+        st.markdown("### 🧬 基因特徵評估")
+        c_apoe = st.selectbox("ApoE4 基因型", ["Negative", "Positive (e3/e4)", "High Risk (e4/e4)"])
 
         btn_c = st.button("執行臨床百分位分析")
 
@@ -508,7 +497,6 @@ elif app_mode == "🏥 臨床落點分析":
         with c2:
             st.subheader("📍 落點視覺化 (Interactive Population Mapping)")
             
-            # --- 升級 3：同齡百分位數分析 (Percentile) ---
             age_cohort = df_oasis[(df_oasis['Age'] >= c_age - 5) & (df_oasis['Age'] <= c_age + 5)]
             if len(age_cohort) > 0:
                 percentile = (age_cohort['nWBV'] < c_nwbv).mean() * 100
@@ -538,7 +526,6 @@ elif app_mode == "🏥 臨床落點分析":
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # 臨床分析 Plotly 儀表板
             fig_gauge_c = go.Figure(go.Indicator(
                 mode = "gauge+number", value = prob_c * 100, domain = {'x': [0, 1], 'y': [0, 1]},
                 title = {'text': "影像診斷風險 (%)"},
