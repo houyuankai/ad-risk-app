@@ -85,7 +85,6 @@ st.markdown("""
     .stChatMessage {background-color: #F8F9FA; border: 1px solid #E9ECEF; border-radius: 12px; padding: 15px; margin-bottom: 10px;}
     [data-testid="stSidebar"] img {display: block; margin-left: auto; margin-right: auto; border-radius: 50%; border: 3px solid #007bff;}
     
-    /* 解釋區塊樣式 */
     .explanation-box {
         background-color: #e8f4fd; 
         border-left: 5px solid #007bff; 
@@ -96,7 +95,6 @@ st.markdown("""
         color: #2c3e50;
     }
     
-    /* 警示區塊 */
     .disclaimer-box {
         background-color: #fff3cd;
         border: 1px solid #ffeeba;
@@ -107,7 +105,6 @@ st.markdown("""
         margin-top: 20px;
     }
     
-    /* 參考文獻樣式 */
     .citation-text {
         font-size: 0.8em; color: #6c757d; font-style: italic; margin-top: 5px;
     }
@@ -119,14 +116,12 @@ st.markdown("""
 # ==========================================
 @st.cache_resource
 def load_all():
-    # 生活模型
     df_l = pd.read_csv('alzheimers_disease_data.csv')
     feat_l = ['Age', 'BMI', 'SleepQuality', 'PhysicalActivity', 'DietQuality', 'FamilyHistoryAlzheimers', 'SystolicBP', 'FunctionalAssessment', 'ADL']
     X_l = df_l[feat_l]; y_l = df_l['Diagnosis']
     X_train_l, X_test_l, y_train_l, y_test_l = train_test_split(X_l, y_l, test_size=0.2, random_state=42)
     clf_l = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_l, y_train_l)
     
-    # 臨床模型
     df_c_raw = pd.read_csv('oasis_cross-sectional.csv').rename(columns={'Educ': 'EDUC'})
     df_long_raw = pd.read_csv('oasis_longitudinal.csv')
     df_long_raw = df_long_raw[df_long_raw['Visit'] == 1]
@@ -140,7 +135,6 @@ def load_all():
     X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(X_c, y_c, test_size=0.2, random_state=42)
     clf_c = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_c, y_train_c)
     
-    # 新增回傳完整的 X, y 以供 CV 交叉驗證使用
     return clf_l, (X_test_l, y_test_l), clf_c, (X_test_c, y_test_c), df_oasis, df_l, X_l, y_l, X_c, y_c
 
 model_l, test_l, model_c, test_c, df_oasis, df_life_raw, X_l_full, y_l_full, X_c_full, y_c_full = load_all()
@@ -156,7 +150,6 @@ st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤"])
 st.sidebar.markdown("---")
 
-# 側欄免責
 with st.sidebar.expander("⚠️ 免責聲明 "):
     st.markdown("""
     本系統為學術專題研究原型。
@@ -202,7 +195,6 @@ if app_mode == "🏠 系統首頁":
         """, unsafe_allow_html=True)
 
     with col2:
-        # --- 本地端載入 Lottie 動態大腦動畫 ---
         lottie_brain = load_lottiefile(".devcontainer/brain.json")
         if lottie_brain:
             st_lottie(lottie_brain, height=400, key="brain_animation")
@@ -402,12 +394,10 @@ elif app_mode == "🥗 生活雷達篩檢":
         btn_run = st.button("生成深度分析報告")
 
     if btn_run:
-        # 特徵矩陣對應
         feat_vals = [max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]
         input_df = pd.DataFrame([feat_vals], columns=['Age', 'BMI', 'SleepQuality', 'PhysicalActivity', 'DietQuality', 'FamilyHistoryAlzheimers', 'SystolicBP', 'FunctionalAssessment', 'ADL'])
         prob = model_l.predict_proba(input_df)[0][1]
         
-        # 專家邏輯調整
         if l_fam == "有": prob = min(0.99, prob * 1.3)
         if l_gen == "女": prob = min(0.99, prob * 1.1)
         if l_age < 60: prob *= 0.7
@@ -416,7 +406,7 @@ elif app_mode == "🥗 生活雷達篩檢":
         with c2:
             st.subheader("📊 醫療級分析報告與解釋")
             
-            # --- 升級 1：Plotly 儀表板 (Gauge Chart) ---
+            # --- Plotly 儀表板 (Gauge Chart) ---
             fig_gauge = go.Figure(go.Indicator(
                 mode = "gauge+number",
                 value = prob * 100,
@@ -435,48 +425,27 @@ elif app_mode == "🥗 生活雷達篩檢":
             fig_gauge.update_layout(height=300, margin=dict(l=10, r=10, t=40, b=10))
             st.plotly_chart(fig_gauge, use_container_width=True)
 
-            # --- 升級 2：SHAP 模型可解釋性 (XAI) ---
+            # --- SHAP 模型可解釋性 (XAI) (已清除重複並強化壓扁機制) ---
             st.markdown("#### 🤖 AI 模型決策解釋 (SHAP Feature Impact)")
             try:
                 import shap
                 explainer = shap.TreeExplainer(model_l)
                 shap_out = explainer.shap_values(input_df)
                 
-                # 安全萃取 SHAP 值 (處理不同 SHAP 版本的資料結構差異)
+                # 處理不同 sklearn 與 shap 版本帶來的陣列結構差異
                 if isinstance(shap_out, list):
-                    vals = shap_out[1]  # 舊版 sklearn RF 回傳 list
+                    vals = np.array(shap_out[1])
                 elif len(np.shape(shap_out)) == 3:
-                    vals = shap_out[:, :, 1] # 某些版本回傳 3D array
+                    vals = np.array(shap_out[:, :, 1])
                 else:
-                    vals = shap_out
+                    vals = np.array(shap_out)
                 
-                # 🌟 關鍵修復：強制將數值壓扁成 1D 一維陣列
-                val_to_plot = np.array(vals).flatten()
+                # 🌟 強制將資料壓扁成 1D，確保 pandas DataFrame 不會報錯
+                val_to_plot = vals.flatten()
                 
-                # 建立 DataFrame 畫圖
-                df_shap = pd.DataFrame({'Feature': input_df.columns, 'Impact': val_to_plot})
-                df_shap['Color'] = df_shap['Impact'].apply(lambda x: '#ff4b4b' if x > 0 else '#00cc96')
-                df_shap = df_shap.sort_values(by='Impact', key=abs, ascending=True) 
-                
-                fig_s = px.bar(df_shap, x='Impact', y='Feature', orientation='h', 
-                               title='哪些因素影響了您的風險判斷？ (紅：增加風險 / 綠：降低風險)',
-                               color='Color', color_discrete_map="identity")
-                fig_s.update_layout(height=350, margin=dict(l=10, r=10, t=40, b=10), showlegend=False)
-                st.plotly_chart(fig_s, use_container_width=True)
-            except Exception as e:
-                st.error(f"SHAP 繪圖發生錯誤: {str(e)}")
-
-            st.markdown("#### 🤖 AI 模型決策解釋 (SHAP Feature Impact)")
-            try:
-                import shap
-                explainer = shap.TreeExplainer(model_l)
-                shap_values = explainer.shap_values(input_df)
-                
-                # RF output handling for SHAP
-                if isinstance(shap_values, list):
-                    val_to_plot = shap_values[1][0]
-                else:
-                    val_to_plot = shap_values[0]
+                # 確保長度一致 (防呆機制)
+                if len(val_to_plot) != len(input_df.columns):
+                    val_to_plot = val_to_plot[:len(input_df.columns)]
                 
                 df_shap = pd.DataFrame({'Feature': input_df.columns, 'Impact': val_to_plot})
                 df_shap['Color'] = df_shap['Impact'].apply(lambda x: '#ff4b4b' if x > 0 else '#00cc96')
@@ -490,7 +459,6 @@ elif app_mode == "🥗 生活雷達篩檢":
             except Exception as e:
                 st.error(f"🔍 系統攔截到真實錯誤：{str(e)}")
                 st.warning("👉 如果上面寫著 'No module named shap'，代表伺服器還在偷懶沒安裝。請點擊右下角 Manage app -> 點擊右上角三個點 ⋮ -> 選擇 Reboot app 強制重啟。")
-
 
             st.markdown("""
             <div class="explanation-box">
@@ -600,7 +568,6 @@ elif app_mode == "📊 數據驗證中心":
     tab1, tab2, tab3 = st.tabs(["生活模型效能 (ROC & CV)", "臨床模型效能 (ROC & CV)", "💾 靜態圖表回顧"])
     with tab1:
         st.markdown("**ROC 曲線與 5-Fold 交叉驗證**")
-        # --- 升級 4：5-Fold 交叉驗證數據顯示 ---
         cv_scores_l = cross_val_score(RandomForestClassifier(n_estimators=100, random_state=42), X_l_full, y_l_full, cv=5, scoring='roc_auc')
         st.success(f"🏆 模型經過 5-Fold 交叉驗證，平均 AUC = **{cv_scores_l.mean():.3f} ± {cv_scores_l.std():.3f}**，顯示模型具有極高的穩定性與泛化能力。")
         
@@ -651,15 +618,11 @@ elif app_mode == "📈 縱向趨勢追蹤":
     st.markdown("輸入您近三年的認知分數 (MMSE) 與腦容量 (nWBV) 變化，系統將自動繪製趨勢圖並進行異常偵測。")
     st.divider()
 
-    # 版面分為左右：左邊輸入數據，右邊顯示圖表
     c1, c2 = st.columns([1, 2])
     
     with c1:
         st.subheader("🗓️ 歷史數據輸入")
-        
-        # 假設最近三年為 2024, 2025, 2026
         years = ['2024', '2025', '2026 (今年)']
-        
         st.markdown("**認知測驗分數 (MMSE, 滿分30)**")
         m_y1 = st.number_input(f"{years[0]} MMSE", 0, 30, 29)
         m_y2 = st.number_input(f"{years[1]} MMSE", 0, 30, 28)
@@ -675,15 +638,12 @@ elif app_mode == "📈 縱向趨勢追蹤":
     with c2:
         if btn_track:
             st.subheader("📊 趨勢視覺化與臨床預警")
-            
-            # 建立作圖用的 DataFrame
             df_trend = pd.DataFrame({
                 '年份': ['2024', '2025', '2026'],
                 'MMSE': [m_y1, m_y2, m_y3],
                 'nWBV': [n_y1, n_y2, n_y3]
             })
 
-            # 使用 Tabs 分開顯示兩種圖表
             tab_m, tab_n = st.tabs(["MMSE 認知趨勢", "nWBV 腦容量趨勢"])
             
             with tab_m:
@@ -694,7 +654,6 @@ elif app_mode == "📈 縱向趨勢追蹤":
                 fig_m.update_traces(textposition="bottom right", line=dict(color='orange', width=4), marker=dict(size=12))
                 st.plotly_chart(fig_m, use_container_width=True)
                 
-                # MMSE 臨床預警邏輯 (一年掉超過2分，或低於26分)
                 if (m_y2 - m_y3) >= 3 or m_y3 < 26:
                     st.error("🚨 **系統預警：** 您的 MMSE 分數在近期出現顯著下滑，可能代表有輕度認知障礙 (MCI) 或病程加速的風險，強烈建議安排神經內科詳細評估。")
                 else:
@@ -708,9 +667,8 @@ elif app_mode == "📈 縱向趨勢追蹤":
                 fig_n.update_traces(textposition="top right", line=dict(color='blue', width=4), marker=dict(size=12))
                 st.plotly_chart(fig_n, use_container_width=True)
                 
-                # nWBV 臨床預警邏輯 (萎縮速度過快)
                 drop_rate = (n_y1 - n_y3) / n_y1
-                if drop_rate > 0.02: # 兩年內萎縮超過 2%
+                if drop_rate > 0.02: 
                     st.warning(f"⚠️ **系統預警：** 您的腦容量在兩年內萎縮了約 {drop_rate:.1%}，此速度高於正常老化預期，需持續追蹤是否有神經退化現象。")
                 else:
                     st.success("🟢 **狀態穩定：** 您的腦容量變化符合正常生理預期。")
