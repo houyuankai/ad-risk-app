@@ -8,3 +8,5 @@ fpdf
 plotly
 streamlit-lottie
 requests
+shap
+scikit-learn
