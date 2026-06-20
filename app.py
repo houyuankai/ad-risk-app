@@ -25,7 +25,7 @@ def load_lottiefile(filepath: str):
         return None
 
 # ==========================================
-# 0. PDF 生成函式 (安全英文版)
+# 0. PDF 生成函式
 # ==========================================
 def create_pdf(user_name, risk_type, prob, factors):
     pdf = FPDF()
@@ -86,25 +86,13 @@ st.markdown("""
     [data-testid="stSidebar"] img {display: block; margin-left: auto; margin-right: auto; border-radius: 50%; border: 3px solid #007bff;}
     
     .explanation-box {
-        background-color: #e8f4fd; 
-        border-left: 5px solid #007bff; 
-        padding: 15px; 
-        border-radius: 5px;
-        margin-top: 10px;
-        font-size: 0.95em;
-        color: #2c3e50;
+        background-color: #e8f4fd; border-left: 5px solid #007bff; 
+        padding: 15px; border-radius: 5px; margin-top: 10px; font-size: 0.95em; color: #2c3e50;
     }
-    
     .disclaimer-box {
-        background-color: #fff3cd;
-        border: 1px solid #ffeeba;
-        color: #856404;
-        padding: 10px;
-        border-radius: 5px;
-        font-size: 0.85em;
-        margin-top: 20px;
+        background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404;
+        padding: 10px; border-radius: 5px; font-size: 0.85em; margin-top: 20px;
     }
-    
     .citation-text {
         font-size: 0.8em; color: #6c757d; font-style: italic; margin-top: 5px;
     }
@@ -123,7 +111,7 @@ def load_all():
     X_train_l, X_test_l, y_train_l, y_test_l = train_test_split(X_l, y_l, test_size=0.2, random_state=42)
     clf_l = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_l, y_train_l)
     
-    # --- 臨床模型 (升級為臨床黃金標準：MCI 三分類引擎) ---
+    # --- 臨床模型 (MCI 三分類引擎) ---
     df_c_raw = pd.read_csv('oasis_cross-sectional.csv').rename(columns={'Educ': 'EDUC'})
     df_long_raw = pd.read_csv('oasis_longitudinal.csv')
     df_long_raw = df_long_raw[df_long_raw['Visit'] == 1]
@@ -132,7 +120,7 @@ def load_all():
                           df_long_raw[[c for c in common if c in df_long_raw.columns]]], ignore_index=True).dropna()
     df_oasis['M/F'] = df_oasis['M/F'].apply(lambda x: 1 if str(x).startswith('F') else 0)
     
-    # 將 CDR 臨床失智評級精確對應為三分類 (0:正常 Healthy, 1:輕度認知障礙 MCI, 2:失智症 AD)
+    # 將 CDR 臨床失智評級轉換為三分類 (0:健康, 1:輕度認知障礙 MCI, 2:失智症 AD)
     def classify_cdr(cdr):
         if cdr == 0: return 0
         elif cdr == 0.5: return 1
@@ -159,7 +147,6 @@ st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤"])
 st.sidebar.markdown("---")
 
-# 精簡免責聲明，專注於學術用途
 with st.sidebar.expander("⚠️ 免責聲明 "):
     st.markdown("""
     本系統為學術專題研究原型。
@@ -187,7 +174,7 @@ if app_mode == "🏠 系統首頁":
         
         **🌟 核心功能：**
         1. **🌐 AI 諮詢**：提供就醫指引與大腦退化病理衛教問答。
-        2. **🥗 生活雷達**：包含 **MoCA 認知功能測驗** 與 **SHAP 高模型可解釋性分析**。
+        2. **🥗 生活雷達**：包含 **MoCA 認知功能測驗** 與 **SHAP 模型可解釋性分析**。
         3. **🏥 臨床落點**：結合多分類決策、**動態儀表板** 與 **群體同齡百分位數定位**。
         4. **📈 趨勢追蹤**：輸入歷史追蹤數據，動態分析認知退化與腦萎縮變化趨勢。
         5. **📄 報告生成**：支援一鍵下載臨床級 PDF 醫師參考報告。
@@ -249,7 +236,7 @@ elif app_mode == "🤖 AI 衛教諮詢":
         reply = ""
 
         if re.search(r'(操作|怎麼用|功能|教學|指南)', q_lower):
-            reply = """🛠 "網站操作指南"：
+            reply = """🛠 **網站操作指南**：
 請點擊左上角的 **「>」符號** 展開側邊欄選單，您會看到以下核心功能：
 * **🥗 生活雷達篩檢**：輸入作息與測驗，產出健康雷達圖與風險評估。
 * **🏥 臨床落點分析**：輸入 MRI 數據，將您的狀況投影至母群體中，查看腦萎縮落點與 MCI 分類。
@@ -288,7 +275,7 @@ elif app_mode == "🤖 AI 衛教諮詢":
    * 衛福部失智症關懷專線：`0800-474-580` (失智時，我幫您)"""
 
         else:
-            reply = "💡 **AI 提示**：抱歉，我目前還在學習中。您可以嘗試點擊上方的**快速提問按鈕**，或是詢問關於**「阿茲海默症介紹」**、**「預防飲食」**、**「建議就醫科別」** 等關鍵字！"
+            reply = "💡 **AI 提示**：抱歉，我目前無法回答這個問題。您可以嘗試點擊上方的**快速提問按鈕**，或是詢問關於**「阿茲海默症介紹」**、**「預防飲食」**、**「建議就醫科別」** 等關鍵字！"
 
         with st.chat_message("assistant"):
             st.markdown(reply)
@@ -332,13 +319,13 @@ elif app_mode == "🥗 生活雷達篩檢":
             st.session_state.recall_options = options
 
         if st.session_state.cog_stage == 0:
-            st.info("本測驗參考 MoCA (蒙特利爾認知評估) 設計，每次測驗將隨機產生題庫，以避免學習效應。")
-            if st.button("開始隨機測驗"):
+            st.info("本測驗參考 MoCA (蒙特利爾認知評估) 設計，包含注意力、計算力與延遲回憶。")
+            if st.button("開始測驗"):
                 st.session_state.cog_stage = 1
                 st.rerun()
                 
         elif st.session_state.cog_stage == 1:
-            st.warning("【第一關：記憶銘記】 請在心中默念並努力記住以下五個詞彙，稍後會進行測驗：")
+            st.warning("【第一關：記憶銘記】 請在心中默念並努力記住以下五個詞彙：")
             words_display = " &nbsp;&nbsp; ".join(st.session_state.target_words)
             st.markdown(f"<h3 style='text-align: center; color: #d9534f;'>{words_display}</h3>", unsafe_allow_html=True)
             if st.button("我已經熟記，進入下一關"):
@@ -360,7 +347,7 @@ elif app_mode == "🥗 生活雷達篩檢":
                 
         elif st.session_state.cog_stage == 3:
             st.info("【第三關：計算力】 考驗您的連續執行能力。")
-            st.markdown("從 100 連續減去 7，**請減兩次**（即 100 減 7，再減 7）。請問最後的答案是多少？")
+            st.markdown("從 100 連續減去 7，**請減兩次**。請問最後的答案是多少？")
             ans3 = st.radio("選擇答案：", ["(請選擇)", "83", "86", "79", "93"])
             if ans3 != "(請選擇)":
                 if st.button("確認計算"):
@@ -396,15 +383,16 @@ elif app_mode == "🥗 生活雷達篩檢":
                 st.rerun()
 
         l_func = st.session_state.cog_score
+        
         st.divider()
         btn_run = st.button("生成深度分析報告")
 
     if btn_run:
         feat_vals = [max(60, l_age), l_bmi, l_sleep, l_act, l_diet, (1 if l_fam=="有" else 0), 120, l_func, l_adl]
         input_df = pd.DataFrame([feat_vals], columns=['Age', 'BMI', 'SleepQuality', 'PhysicalActivity', 'DietQuality', 'FamilyHistoryAlzheimers', 'SystolicBP', 'FunctionalAssessment', 'ADL'])
-        prob = model_l.predict_proba(input_df)[0][1]
         
         # 建立流行病學風險計分卡校正
+        prob = model_l.predict_proba(input_df)[0][1]
         risk_score = 0
         if l_fam == "有": risk_score += 2
         if l_age > 75: risk_score += 2
@@ -450,6 +438,7 @@ elif app_mode == "🥗 生活雷達篩檢":
                     vals = np.array(shap_out)
                 
                 val_to_plot = vals.flatten()
+                
                 if len(val_to_plot) != len(input_df.columns):
                     val_to_plot = val_to_plot[:len(input_df.columns)]
                 
@@ -495,6 +484,7 @@ elif app_mode == "🏥 臨床落點分析":
         
         st.markdown("### 🧬 基因特徵評估")
         c_apoe = st.selectbox("ApoE4 基因型", ["Negative", "Positive (e3/e4)", "High Risk (e4/e4)"])
+
         btn_c = st.button("執行臨床百分位分析")
 
     if btn_c:
@@ -590,3 +580,107 @@ elif app_mode == "📊 數據驗證中心":
         st.success(f"🏆 模型經過 5-Fold 交叉驗證，平均 AUC = **{cv_scores_l.mean():.3f} ± {cv_scores_l.std():.3f}**，顯示模型具有極高的穩定性與泛化能力。")
         
         X_t, y_t = test_l; y_p = model_l.predict_proba(X_t)[:, 1]
+        fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
+        ax.plot(fpr, tpr, label=f'Test AUC={auc(fpr, tpr):.2f}', color='#007bff', lw=2)
+        ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
+        
+    with tab2:
+        st.markdown("**ROC 曲線與 5-Fold 交叉驗證 (三分類早期篩檢模型)**")
+        y_c_bin = (y_c_full > 0).astype(int)
+        cv_scores_c = cross_val_score(RandomForestClassifier(n_estimators=100, random_state=42), X_c_full, y_c_bin, cv=5, scoring='roc_auc')
+        st.success(f"🏆 臨床模型 (健康 vs 認知異常) 5-Fold 交叉驗證，平均 AUC = **{cv_scores_c.mean():.3f} ± {cv_scores_c.std():.3f}**。")
+        
+        X_t, y_t = test_c
+        y_t_bin = (y_t > 0).astype(int)
+        probs = model_c.predict_proba(X_t)
+        y_p_bin = probs[:, 1] + probs[:, 2]
+        
+        fpr, tpr, _ = roc_curve(y_t_bin, y_p_bin); fig, ax = plt.subplots(figsize=(6,4))
+        ax.plot(fpr, tpr, label=f'Test AUC={auc(fpr, tpr):.2f}', color='#28a745', lw=2)
+        ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
+        
+    with tab3:
+        st.subheader("OASIS 臨床數據解析")
+        c1, c2, c3 = st.columns(3)
+        with c1: 
+            st.image("scatter_CDR_color.png", use_container_width=True)
+            st.caption("▲ **年齡 vs MMSE**：顯示隨著年齡增長，認知分數 (MMSE) 下降的趨勢，紅點代表失智患者集中區。")
+        with c2: 
+            st.image("heatmap_new.png", use_container_width=True)
+            st.caption("▲ **相關性熱圖**：顏色越紅/藍代表相關性越強。圖中可見 nWBV 與 CDR (失智等級) 呈負相關。")
+        with c3: 
+            st.image("feature_importance_new.png", use_container_width=True)
+            st.caption("▲ **特徵重要性**：顯示 nWBV (腦容量) 是預測模型中權重最高的因子，其次是認知受試者年齡。")
+        
+        st.divider()
+        st.subheader("Kaggle 生活數據解析")
+        c4, c5, c6 = st.columns(3)
+        with c4: 
+            st.image("csv3_scatter.png", use_container_width=True)
+            st.caption("▲ **生活散佈圖**：展示不同生活習慣分群下的健康狀態分佈。")
+        with c5: 
+            st.image("csv3_heatmap.png", use_container_width=True)
+            st.caption("▲ **風險因子熱圖**：分析睡眠、飲食、運動等因子之間的關聯性。")
+        with c6: 
+            st.image("csv3_bar.png", use_container_width=True)
+            st.caption("▲ **生活因子權重**：顯示「功能性評估」與「ADL」對預測結果影響最大。")
+
+# --- PAGE 6: 縱向追蹤 ---
+elif app_mode == "📈 縱向趨勢追蹤":
+    st.title("📈 縱向健康趨勢追蹤 (Longitudinal Analysis)")
+    st.markdown("輸入您近三年的認知分數 (MMSE) 與腦容量 (nWBV) 變化，系統將自動繪製趨勢圖並進行異常偵測。")
+    st.divider()
+
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        st.subheader("🗓️ 歷史數據輸入")
+        years = ['2024', '2025', '2026 (今年)']
+        st.markdown("**認知測驗分數 (MMSE, 滿分30)**")
+        m_y1 = st.number_input(f"{years[0]} MMSE", 0, 30, 29)
+        m_y2 = st.number_input(f"{years[1]} MMSE", 0, 30, 28)
+        m_y3 = st.number_input(f"{years[2]} MMSE", 0, 30, 25)
+        
+        st.markdown("**全腦體積比 (nWBV)**")
+        n_y1 = st.number_input(f"{years[0]} nWBV", 0.600, 0.900, 0.780, format="%.3f")
+        n_y2 = st.number_input(f"{years[1]} nWBV", 0.600, 0.900, 0.775, format="%.3f")
+        n_y3 = st.number_input(f"{years[2]} nWBV", 0.600, 0.900, 0.750, format="%.3f")
+
+        btn_track = st.button("生成趨勢追蹤報告")
+
+    with c2:
+        if btn_track:
+            st.subheader("📊 趨勢視覺化與臨床預警")
+            df_trend = pd.DataFrame({
+                '年份': ['2024', '2025', '2026'],
+                'MMSE': [m_y1, m_y2, m_y3],
+                'nWBV': [n_y1, n_y2, n_y3]
+            })
+
+            tab_m, tab_n = st.tabs(["MMSE 認知趨勢", "nWBV 腦容量趨勢"])
+            
+            with tab_m:
+                fig_m = px.line(df_trend, x='年份', y='MMSE', markers=True, 
+                                title='MMSE 分數變化趨勢',
+                                range_y=[15, 30],
+                                text='MMSE')
+                fig_m.update_traces(textposition="bottom right", line=dict(color='orange', width=4), marker=dict(size=12))
+                st.plotly_chart(fig_m, use_container_width=True)
+                
+                if (m_y2 - m_y3) >= 3 or m_y3 < 26:
+                    st.error("🚨 **系統預警：** 您的 MMSE 分數在近期出現顯著下滑，符合輕度認知障礙 (MCI) 的早期病程特徵，強烈建議安排神經內科詳細評估。")
+                else:
+                    st.success("🟢 **狀態穩定：** 您的認知分數目前維持在穩定區間。")
+
+            with tab_n:
+                fig_n = px.line(df_trend, x='年份', y='nWBV', markers=True, 
+                                title='nWBV 腦容量變化趨勢',
+                                range_y=[0.650, 0.850],
+                                text='nWBV')
+                fig_n.update_traces(textposition="top right", line=dict(color='blue', width=4), marker=dict(size=12))
+                st.plotly_chart(fig_n, use_container_width=True)
+                
+                drop_rate = (n_y1 - n_y3) / n_y1
+                if drop_rate > 0.02: 
+                    st.warning(f"⚠️ **系統預警：** 您的腦容量在兩年內萎縮了約 {drop_rate:.1%}，此速度高於正常老化生理預期，需密切追蹤退化現象。")
+                else:
+                    st.success("🟢 **狀態穩定：** 您的腦容量變化符合正常生理老化預期。")
