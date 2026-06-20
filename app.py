@@ -458,7 +458,9 @@ elif app_mode == "🥗 生活雷達篩檢":
                 fig_s.update_layout(height=350, margin=dict(l=10, r=10, t=40, b=10), showlegend=False)
                 st.plotly_chart(fig_s, use_container_width=True)
             except Exception as e:
-                st.warning("SHAP 分析模組啟動失敗，請確認伺服器已安裝 `shap` 套件。")
+                st.error(f"🔍 系統攔截到真實錯誤：{str(e)}")
+                st.warning("👉 如果上面寫著 'No module named shap'，代表伺服器還在偷懶沒安裝。請點擊右下角 Manage app -> 點擊右上角三個點 ⋮ -> 選擇 Reboot app 強制重啟。")
+
 
             st.markdown("""
             <div class="explanation-box">
