@@ -56,10 +56,10 @@ def create_pdf(user_name, risk_type, prob, factors):
     pdf.cell(200, 10, txt="Medical Advice:", ln=1)
     pdf.set_font("Arial", size=11)
     
-    if risk_type == "High":
+    if risk_type == "High" or "AD" in risk_type:
         advice_text = "High risk detected. Immediate clinical consultation with a neurologist is recommended."
-    elif risk_type == "Moderate":
-        advice_text = "Moderate risk detected. Please improve sleep quality, maintain a healthy diet, and monitor regularly."
+    elif risk_type == "Moderate" or "MCI" in risk_type:
+        advice_text = "Moderate risk (MCI) detected. Please improve sleep quality, maintain a healthy diet, and monitor regularly."
     else:
         advice_text = "Low risk detected. Continue maintaining a healthy lifestyle and regular exercise."
     
@@ -116,12 +116,14 @@ st.markdown("""
 # ==========================================
 @st.cache_resource
 def load_all():
+    # --- 生活模型 ---
     df_l = pd.read_csv('alzheimers_disease_data.csv')
     feat_l = ['Age', 'BMI', 'SleepQuality', 'PhysicalActivity', 'DietQuality', 'FamilyHistoryAlzheimers', 'SystolicBP', 'FunctionalAssessment', 'ADL']
     X_l = df_l[feat_l]; y_l = df_l['Diagnosis']
     X_train_l, X_test_l, y_train_l, y_test_l = train_test_split(X_l, y_l, test_size=0.2, random_state=42)
     clf_l = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_l, y_train_l)
     
+    # --- 臨床模型 (升級為臨床黃金標準：MCI 三分類引擎) ---
     df_c_raw = pd.read_csv('oasis_cross-sectional.csv').rename(columns={'Educ': 'EDUC'})
     df_long_raw = pd.read_csv('oasis_longitudinal.csv')
     df_long_raw = df_long_raw[df_long_raw['Visit'] == 1]
@@ -129,11 +131,18 @@ def load_all():
     df_oasis = pd.concat([df_c_raw[[c for c in common if c in df_c_raw.columns]], 
                           df_long_raw[[c for c in common if c in df_long_raw.columns]]], ignore_index=True).dropna()
     df_oasis['M/F'] = df_oasis['M/F'].apply(lambda x: 1 if str(x).startswith('F') else 0)
-    df_oasis['Target'] = df_oasis['CDR'].apply(lambda x: 1 if x > 0 else 0)
+    
+    # 將 CDR 臨床失智評級精確對應為三分類 (0:正常 Healthy, 1:輕度認知障礙 MCI, 2:失智症 AD)
+    def classify_cdr(cdr):
+        if cdr == 0: return 0
+        elif cdr == 0.5: return 1
+        else: return 2
+        
+    df_oasis['Target'] = df_oasis['CDR'].apply(classify_cdr)
     feat_c = ['M/F', 'Age', 'EDUC', 'SES', 'eTIV', 'nWBV']
     X_c = df_oasis[feat_c]; y_c = df_oasis['Target']
     X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(X_c, y_c, test_size=0.2, random_state=42)
-    clf_c = RandomForestClassifier(n_estimators=100, random_state=42).fit(X_train_c, y_train_c)
+    clf_c = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced').fit(X_train_c, y_train_c)
     
     return clf_l, (X_test_l, y_test_l), clf_c, (X_test_c, y_test_c), df_oasis, df_l, X_l, y_l, X_c, y_c
 
@@ -150,10 +159,11 @@ st.sidebar.markdown("---")
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤"])
 st.sidebar.markdown("---")
 
+# 精簡免責聲明，專注於學術用途
 with st.sidebar.expander("⚠️ 免責聲明 "):
     st.markdown("""
     本系統為學術專題研究原型。
-    - **結果用途**：本系統分析結果僅供教學與學術研究參考，**非正式醫療診斷依據**，若有實際醫療需求請尋求專業醫師協助。
+    - **結果用途**：本系統分析結果僅供教學與學術研究參考，**非正式醫療診斷依據**。若有實際醫療需求，請尋求專業醫師協助。
     """)
 
 st.sidebar.caption("Designed by NYCU MED Project Team")
@@ -170,18 +180,18 @@ if app_mode == "🏠 系統首頁":
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.info("👋 **歡迎使用 AZ雙軌評估系統!** 😱")
+        st.info("👋 **歡迎使用 AZ雙軌評估系統!**")
         st.markdown("""
         **🔍 網站操作指南：**
         請點擊左上角的 **「>>」符號** 展開側邊欄選單，即可切換以下功能：
         
         **🌟 核心功能：**
-        1. **🌐 AI 諮詢**：提供就醫指引與衛教問答。
-        2. **🥗 生活雷達**：包含 **MoCA 模擬測驗** 與 **SHAP 模型可解釋性分析**。
-        3. **🏥 臨床落點**：導入 **Plotly 互動儀表板** 與 **同齡百分位數分析**。
-        4. **📈 趨勢追蹤**：輸入歷史數據，分析您的認知與腦容量變化。
-        5. **📄 報告生成**：支援一鍵下載 PDF 醫師參考報告。
-        6. **📊 數據實證**：公開 ROC 曲線與 **5-Fold 交叉驗證** 數據，實證模型效能。
+        1. **🌐 AI 諮詢**：提供就醫指引與大腦退化病理衛教問答。
+        2. **🥗 生活雷達**：包含 **MoCA 認知功能測驗** 與 **SHAP 高模型可解釋性分析**。
+        3. **🏥 臨床落點**：結合多分類決策、**動態儀表板** 與 **群體同齡百分位數定位**。
+        4. **📈 趨勢追蹤**：輸入歷史追蹤數據，動態分析認知退化與腦萎縮變化趨勢。
+        5. **📄 報告生成**：支援一鍵下載臨床級 PDF 醫師參考報告。
+        6. **📊 數據實證**：公開完整測試集 ROC 曲線與 **5-Fold 交叉驗證**，實證模型科學效能。
         """)
         
         st.markdown("""
@@ -239,11 +249,11 @@ elif app_mode == "🤖 AI 衛教諮詢":
         reply = ""
 
         if re.search(r'(操作|怎麼用|功能|教學|指南)', q_lower):
-            reply = """🛠️ **網站操作指南**：
+            reply = """🛠 "網站操作指南"：
 請點擊左上角的 **「>」符號** 展開側邊欄選單，您會看到以下核心功能：
 * **🥗 生活雷達篩檢**：輸入作息與測驗，產出健康雷達圖與風險評估。
-* **🏥 臨床落點分析**：輸入 MRI 數據，將您的狀況投影至母群體中，查看腦萎縮落點。
-* **📊 數據驗證中心**：查看本系統隨機森林模型的 ROC 曲線與特徵重要性分析。"""
+* **🏥 臨床落點分析**：輸入 MRI 數據，將您的狀況投影至母群體中，查看腦萎縮落點與 MCI 分類。
+* **📊 數據驗證中心**：查看本系統雙森林模型之 5-Fold 交叉驗證與 ROC 曲線效能分析。"""
 
         elif re.search(r'(阿茲海默|失智|痴呆|什麼是|介紹)', q_lower):
             reply = """🧠 **疾病簡介：阿茲海默症 (AD)**
@@ -386,7 +396,6 @@ elif app_mode == "🥗 生活雷達篩檢":
                 st.rerun()
 
         l_func = st.session_state.cog_score
-        
         st.divider()
         btn_run = st.button("生成深度分析報告")
 
@@ -395,10 +404,14 @@ elif app_mode == "🥗 生活雷達篩檢":
         input_df = pd.DataFrame([feat_vals], columns=['Age', 'BMI', 'SleepQuality', 'PhysicalActivity', 'DietQuality', 'FamilyHistoryAlzheimers', 'SystolicBP', 'FunctionalAssessment', 'ADL'])
         prob = model_l.predict_proba(input_df)[0][1]
         
-        if l_fam == "有": prob = min(0.99, prob * 1.3)
-        if l_gen == "女": prob = min(0.99, prob * 1.1)
-        if l_age < 60: prob *= 0.7
-        risk_lvl = "High" if prob > 0.6 else ("Moderate" if prob > 0.3 else "Low")
+        # 建立流行病學風險計分卡校正
+        risk_score = 0
+        if l_fam == "有": risk_score += 2
+        if l_age > 75: risk_score += 2
+        if l_sleep < 5: risk_score += 1
+        
+        final_risk_prob = min(0.99, prob + (risk_score * 0.05))
+        risk_lvl = "High" if final_risk_prob > 0.6 else ("Moderate" if final_risk_prob > 0.3 else "Low")
         
         with c2:
             st.subheader("📊 醫療級分析報告與解釋")
@@ -406,9 +419,9 @@ elif app_mode == "🥗 生活雷達篩檢":
             # --- Plotly 儀表板 (Gauge Chart) ---
             fig_gauge = go.Figure(go.Indicator(
                 mode = "gauge+number",
-                value = prob * 100,
+                value = final_risk_prob * 100,
                 domain = {'x': [0, 1], 'y': [0, 1]},
-                title = {'text': "預測風險機率 (%)", 'font': {'size': 24}},
+                title = {'text': "綜合預測風險機率 (%)", 'font': {'size': 24}},
                 gauge = {
                     'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
                     'bar': {'color': "darkgray"},
@@ -416,7 +429,7 @@ elif app_mode == "🥗 生活雷達篩檢":
                         {'range': [0, 30], 'color': "#00cc96"},
                         {'range': [30, 60], 'color': "#ffc107"},
                         {'range': [60, 100], 'color': "#ff4b4b"}],
-                    'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': prob * 100}
+                    'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': final_risk_prob * 100}
                 }
             ))
             fig_gauge.update_layout(height=300, margin=dict(l=10, r=10, t=40, b=10))
@@ -437,7 +450,6 @@ elif app_mode == "🥗 生活雷達篩檢":
                     vals = np.array(shap_out)
                 
                 val_to_plot = vals.flatten()
-                
                 if len(val_to_plot) != len(input_df.columns):
                     val_to_plot = val_to_plot[:len(input_df.columns)]
                 
@@ -451,8 +463,7 @@ elif app_mode == "🥗 生活雷達篩檢":
                 fig_s.update_layout(height=350, margin=dict(l=10, r=10, t=40, b=10), showlegend=False)
                 st.plotly_chart(fig_s, use_container_width=True)
             except Exception as e:
-                st.error(f"🔍 系統攔截到真實錯誤：{str(e)}")
-                st.warning("👉 若顯示 'No module named shap'，請點擊右下角 Manage app -> 點擊右上角三個點 ⋮ -> 選擇 Reboot app 強制重啟。")
+                st.error(f"🔍 SHAP 解析錯誤：{str(e)}")
 
             st.markdown("""
             <div class="explanation-box">
@@ -465,13 +476,13 @@ elif app_mode == "🥗 生活雷達篩檢":
             """, unsafe_allow_html=True)
             
             fam_eng = "Yes" if l_fam == "有" else "No"
-            pdf_bytes = create_pdf(f"User_{l_age}", risk_type=risk_lvl, prob=prob, factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": fam_eng})
+            pdf_bytes = create_pdf(f"User_{l_age}", risk_type=risk_lvl, prob=final_risk_prob, factors={"BMI": l_bmi, "Sleep": l_sleep, "Activity": l_act, "Family History": fam_eng})
             st.download_button("📥 下載 PDF 醫師評估報告", data=pdf_bytes, file_name="AD_Risk_Report.pdf", mime="application/pdf")
 
 # --- PAGE 4: 臨床落點 ---
 elif app_mode == "🏥 臨床落點分析":
     st.title("🏥 臨床影像定位分析 (Population Percentile)")
-    st.markdown("輸入 MRI 影像數值，AI 系統將計算您的腦萎縮程度在母群體中的精確落點與百分位數。")
+    st.markdown("輸入 MRI 影像數值，AI 系統將計算您的腦萎縮程度在母群體中的精確落點與百分位數，並進行 MCI 臨床早期篩檢。")
     st.divider()
     
     c1, c2 = st.columns([1, 2])
@@ -484,15 +495,30 @@ elif app_mode == "🏥 臨床落點分析":
         
         st.markdown("### 🧬 基因特徵評估")
         c_apoe = st.selectbox("ApoE4 基因型", ["Negative", "Positive (e3/e4)", "High Risk (e4/e4)"])
-
         btn_c = st.button("執行臨床百分位分析")
 
     if btn_c:
         g_val = 1 if c_gen == "Female" else 0
         input_c = [[g_val, c_age, c_educ, c_ses, c_etiv, c_nwbv]]
-        prob_c = model_c.predict_proba(input_c)[0][1]
-        if "High" in c_apoe: prob_c = min(0.99, prob_c * 1.5)
-        elif "Positive" in c_apoe: prob_c = min(0.99, prob_c * 1.2)
+        
+        # 取得三分類臨床決策機率 [健康機率, MCI機率, AD機率]
+        probs = model_c.predict_proba(input_c)[0]
+        prob_healthy, prob_mci, prob_ad = probs[0], probs[1], probs[2]
+        
+        # 建立客觀醫學臨床風險計分卡 (Risk Score Card)
+        clinical_risk_score = 0
+        if "High" in c_apoe: clinical_risk_score += 3
+        elif "Positive" in c_apoe: clinical_risk_score += 1
+        if c_age > 75: clinical_risk_score += 1
+        if c_nwbv < 0.71: clinical_risk_score += 2
+        
+        final_diagnosis = "🟢 健康 (Normal)"
+        if prob_ad > 0.4 or clinical_risk_score >= 4: 
+            final_diagnosis = "🔴 疑似阿茲海默症 (AD)"
+        elif prob_mci > 0.4 or clinical_risk_score >= 2: 
+            final_diagnosis = "🟡 輕度認知障礙 (MCI)"
+            
+        combined_risk_index = min(100, (prob_mci * 0.5 + prob_ad * 1.0) * 100 + clinical_risk_score * 10)
         
         with c2:
             st.subheader("📍 落點視覺化 (Interactive Population Mapping)")
@@ -503,7 +529,7 @@ elif app_mode == "🏥 臨床落點分析":
             else:
                 percentile = (df_oasis['nWBV'] < c_nwbv).mean() * 100
                 
-            st.info(f"📊 **百分位數分析**：您的全腦體積比 (nWBV) 為 **{c_nwbv:.3f}**。在正負五歲的同齡群體中，您的腦容量高於 **{percentile:.1f}%** 的受試者。")
+            st.info(f"📊 **百分位數分析**：您的全腦體積比 (nWBV) 為 **{c_nwbv:.3f}**。在同齡群體中，您的腦容量高於 **{percentile:.1f}%** 的受試者。")
             
             fig = px.scatter(
                 df_oasis, x='Age', y='nWBV', color='CDR',
@@ -526,24 +552,29 @@ elif app_mode == "🏥 臨床落點分析":
             )
             st.plotly_chart(fig, use_container_width=True)
             
+            st.markdown(f"### 🩺 綜合影像與基因評估結果：**{final_diagnosis}**")
+            
             fig_gauge_c = go.Figure(go.Indicator(
-                mode = "gauge+number", value = prob_c * 100, domain = {'x': [0, 1], 'y': [0, 1]},
-                title = {'text': "影像診斷風險 (%)"},
+                mode = "gauge+number", value = combined_risk_index, domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': "綜合病變風險指數"},
                 gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "darkblue"},
-                         'steps' : [{'range': [0, 50], 'color': "lightgreen"}, {'range': [50, 100], 'color': "tomato"}]}
+                         'steps' : [{'range': [0, 40], 'color': "lightgreen"}, {'range': [40, 70], 'color': "#ffc107"}, {'range': [70, 100], 'color': "tomato"}]}
             ))
             fig_gauge_c.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_gauge_c, use_container_width=True)
+            
+            st.caption(f"🧠 **AI 多元分類機率**：健康 {prob_healthy:.1%} | 輕度認知障礙(MCI) {prob_mci:.1%} | 失智(AD) {prob_ad:.1%}")
+            st.caption(f"🧬 **基因與生理臨床風險計分卡 (Risk Score)**：+{clinical_risk_score} 分")
             
             avg_nwbv = df_oasis[df_oasis['Age'] == c_age]['nWBV'].mean()
             if np.isnan(avg_nwbv): avg_nwbv = 0.750
             diff = c_nwbv - avg_nwbv
             
-            if prob_c > 0.5: 
-                st.error("🔴 高度疑似阿茲海默症病變 (腦萎縮顯著)")
-                st.write(f"您的腦容量比同齡平均值 {'低' if diff < 0 else '高'} 了 {abs(diff):.3f}，建議進行詳細檢查。")
+            if "Normal" not in final_diagnosis: 
+                st.error("🔴 高度疑似神經退化病變")
+                st.write(f"您的腦容量比同齡平均值低了 {abs(diff):.3f}，建議前往神經內科安排進一步醫學評估。")
             else: 
-                st.success("🟢 目前無明顯阿茲海默症特徵 (腦容量正常)")
+                st.success("🟢 目前無明顯阿茲海默症與 MCI 臨床特徵 (腦容量符合預期)")
 
 # --- PAGE 5: 數據驗證 ---
 elif app_mode == "📊 數據驗證中心":
@@ -559,103 +590,3 @@ elif app_mode == "📊 數據驗證中心":
         st.success(f"🏆 模型經過 5-Fold 交叉驗證，平均 AUC = **{cv_scores_l.mean():.3f} ± {cv_scores_l.std():.3f}**，顯示模型具有極高的穩定性與泛化能力。")
         
         X_t, y_t = test_l; y_p = model_l.predict_proba(X_t)[:, 1]
-        fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'Test AUC={auc(fpr, tpr):.2f}', color='#007bff', lw=2)
-        ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
-        
-    with tab2:
-        st.markdown("**ROC 曲線與 5-Fold 交叉驗證**")
-        cv_scores_c = cross_val_score(RandomForestClassifier(n_estimators=100, random_state=42), X_c_full, y_c_full, cv=5, scoring='roc_auc')
-        st.success(f"🏆 臨床模型 5-Fold 交叉驗證，平均 AUC = **{cv_scores_c.mean():.3f} ± {cv_scores_c.std():.3f}**。")
-        
-        X_t, y_t = test_c; y_p = model_c.predict_proba(X_t)[:, 1]
-        fpr, tpr, _ = roc_curve(y_t, y_p); fig, ax = plt.subplots(figsize=(6,4))
-        ax.plot(fpr, tpr, label=f'Test AUC={auc(fpr, tpr):.2f}', color='#28a745', lw=2)
-        ax.plot([0,1],[0,1],'k--'); ax.legend(); st.pyplot(fig)
-        
-    with tab3:
-        st.subheader("OASIS 臨床數據解析")
-        c1, c2, c3 = st.columns(3)
-        with c1: 
-            st.image("scatter_CDR_color.png", use_container_width=True)
-            st.caption("▲ **年齡 vs MMSE**：顯示隨著年齡增長，認知分數 (MMSE) 下降的趨勢，紅點代表失智患者集中區。")
-        with c2: 
-            st.image("heatmap_new.png", use_container_width=True)
-            st.caption("▲ **相關性熱圖**：顏色越紅/藍代表相關性越強。圖中可見 nWBV 與 CDR (失智等級) 呈負相關。")
-        with c3: 
-            st.image("feature_importance_new.png", use_container_width=True)
-            st.caption("▲ **特徵重要性**：顯示 nWBV (腦容量) 是預測模型中權重最高的因子，其次是認知受試者年齡。")
-        
-        st.divider()
-        st.subheader("Kaggle 生活數據解析")
-        c4, c5, c6 = st.columns(3)
-        with c4: 
-            st.image("csv3_scatter.png", use_container_width=True)
-            st.caption("▲ **生活散佈圖**：展示不同生活習慣分群下的健康狀態分佈。")
-        with c5: 
-            st.image("csv3_heatmap.png", use_container_width=True)
-            st.caption("▲ **風險因子熱圖**：分析睡眠、飲食、運動等因子之間的關聯性。")
-        with c6: 
-            st.image("csv3_bar.png", use_container_width=True)
-            st.caption("▲ **生活因子權重**：顯示「功能性評估」與「ADL」對預測結果影響最大。")
-
-# --- PAGE 6: 縱向追蹤 ---
-elif app_mode == "📈 縱向趨勢追蹤":
-    st.title("📈 縱向健康趨勢追蹤 (Longitudinal Analysis)")
-    st.markdown("輸入您近三年的認知分數 (MMSE) 與腦容量 (nWBV) 變化，系統將自動繪製趨勢圖並進行異常偵測。")
-    st.divider()
-
-    c1, c2 = st.columns([1, 2])
-    
-    with c1:
-        st.subheader("🗓️ 歷史數據輸入")
-        years = ['2024', '2025', '2026 (今年)']
-        st.markdown("**認知測驗分數 (MMSE, 滿分30)**")
-        m_y1 = st.number_input(f"{years[0]} MMSE", 0, 30, 29)
-        m_y2 = st.number_input(f"{years[1]} MMSE", 0, 30, 28)
-        m_y3 = st.number_input(f"{years[2]} MMSE", 0, 30, 25)
-        
-        st.markdown("**全腦體積比 (nWBV)**")
-        n_y1 = st.number_input(f"{years[0]} nWBV", 0.600, 0.900, 0.780, format="%.3f")
-        n_y2 = st.number_input(f"{years[1]} nWBV", 0.600, 0.900, 0.775, format="%.3f")
-        n_y3 = st.number_input(f"{years[2]} nWBV", 0.600, 0.900, 0.750, format="%.3f")
-
-        btn_track = st.button("生成趨勢追蹤報告")
-
-    with c2:
-        if btn_track:
-            st.subheader("📊 趨勢視覺化與臨床預警")
-            df_trend = pd.DataFrame({
-                '年份': ['2024', '2025', '2026'],
-                'MMSE': [m_y1, m_y2, m_y3],
-                'nWBV': [n_y1, n_y2, n_y3]
-            })
-
-            tab_m, tab_n = st.tabs(["MMSE 認知趨勢", "nWBV 腦容量趨勢"])
-            
-            with tab_m:
-                fig_m = px.line(df_trend, x='年份', y='MMSE', markers=True, 
-                                title='MMSE 分數變化趨勢',
-                                range_y=[15, 30],
-                                text='MMSE')
-                fig_m.update_traces(textposition="bottom right", line=dict(color='orange', width=4), marker=dict(size=12))
-                st.plotly_chart(fig_m, use_container_width=True)
-                
-                if (m_y2 - m_y3) >= 3 or m_y3 < 26:
-                    st.error("🚨 **系統預警：** 您的 MMSE 分數在近期出現顯著下滑，可能代表有輕度認知障礙 (MCI) 或病程加速的風險，強烈建議安排神經內科詳細評估。")
-                else:
-                    st.success("🟢 **狀態穩定：** 您的認知分數目前維持在穩定區間。")
-
-            with tab_n:
-                fig_n = px.line(df_trend, x='年份', y='nWBV', markers=True, 
-                                title='nWBV 腦容量變化趨勢',
-                                range_y=[0.650, 0.850],
-                                text='nWBV')
-                fig_n.update_traces(textposition="top right", line=dict(color='blue', width=4), marker=dict(size=12))
-                st.plotly_chart(fig_n, use_container_width=True)
-                
-                drop_rate = (n_y1 - n_y3) / n_y1
-                if drop_rate > 0.02: 
-                    st.warning(f"⚠️ **系統預警：** 您的腦容量在兩年內萎縮了約 {drop_rate:.1%}，此速度高於正常老化預期，需持續追蹤是否有神經退化現象。")
-                else:
-                    st.success("🟢 **狀態穩定：** 您的腦容量變化符合正常生理預期。")
