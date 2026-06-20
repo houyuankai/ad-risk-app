@@ -195,8 +195,17 @@ if app_mode == "🏠 系統首頁":
         """, unsafe_allow_html=True)
 
     with col2:
-        try: st.image("brain_compare.png", use_container_width=True, caption="Healthy Brain (Left) vs AD Brain (Right)")
-        except: st.warning("請確保 brain_compare.png 已上傳")
+        # --- 全新升級：Lottie 動態大腦動畫 ---
+        # 這裡我為你準備了一個極具科技感的醫療/大腦 Lottie 動畫網址
+        lottie_brain_url = "https://lottie.host/9813dd11-13c5-4180-aa1e-0eb30f57a3e7/9f5X1Kj1W0.json"
+        lottie_brain = load_lottieurl(lottie_brain_url)
+        
+        if lottie_brain:
+            # height 可以調整動畫大小
+            st_lottie(lottie_brain, height=400, key="brain_animation")
+        else:
+            st.warning("動畫載入失敗，請確認網路連線。")
+        # --- Lottie 替換結束 ---
 
 # --- PAGE 2: AI Chatbot ---
 elif app_mode == "🤖 AI 衛教諮詢":
