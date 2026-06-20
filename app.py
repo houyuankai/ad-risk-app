@@ -440,6 +440,36 @@ elif app_mode == "🥗 生活雷達篩檢":
             try:
                 import shap
                 explainer = shap.TreeExplainer(model_l)
+                shap_out = explainer.shap_values(input_df)
+                
+                # 安全萃取 SHAP 值 (處理不同 SHAP 版本的資料結構差異)
+                if isinstance(shap_out, list):
+                    vals = shap_out[1]  # 舊版 sklearn RF 回傳 list
+                elif len(np.shape(shap_out)) == 3:
+                    vals = shap_out[:, :, 1] # 某些版本回傳 3D array
+                else:
+                    vals = shap_out
+                
+                # 🌟 關鍵修復：強制將數值壓扁成 1D 一維陣列
+                val_to_plot = np.array(vals).flatten()
+                
+                # 建立 DataFrame 畫圖
+                df_shap = pd.DataFrame({'Feature': input_df.columns, 'Impact': val_to_plot})
+                df_shap['Color'] = df_shap['Impact'].apply(lambda x: '#ff4b4b' if x > 0 else '#00cc96')
+                df_shap = df_shap.sort_values(by='Impact', key=abs, ascending=True) 
+                
+                fig_s = px.bar(df_shap, x='Impact', y='Feature', orientation='h', 
+                               title='哪些因素影響了您的風險判斷？ (紅：增加風險 / 綠：降低風險)',
+                               color='Color', color_discrete_map="identity")
+                fig_s.update_layout(height=350, margin=dict(l=10, r=10, t=40, b=10), showlegend=False)
+                st.plotly_chart(fig_s, use_container_width=True)
+            except Exception as e:
+                st.error(f"SHAP 繪圖發生錯誤: {str(e)}")
+
+            st.markdown("#### 🤖 AI 模型決策解釋 (SHAP Feature Impact)")
+            try:
+                import shap
+                explainer = shap.TreeExplainer(model_l)
                 shap_values = explainer.shap_values(input_df)
                 
                 # RF output handling for SHAP
