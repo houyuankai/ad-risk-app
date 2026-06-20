@@ -11,6 +11,16 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_rep
 from fpdf import FPDF
 import plotly.express as px
 import plotly.graph_objects as go
+import requests
+from streamlit_lottie import st_lottie
+
+# 建立一個快取函式來載入 Lottie 動畫 (避免每次整理網頁都要重新下載)
+@st.cache_data
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
 # ==========================================
 # 0. PDF 生成函式 (安全英文版)
