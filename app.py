@@ -25,7 +25,7 @@ def load_lottiefile(filepath: str):
         return None
 
 # ==========================================
-# 0. PDF 生成函式
+# 0. PDF 生成函式 (安全英文版)
 # ==========================================
 def create_pdf(user_name, risk_type, prob, factors):
     pdf = FPDF()
@@ -144,7 +144,8 @@ except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.pn
 
 st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v7.0</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
-app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤"])
+# 🌟 在側邊欄新增了互動小說的導航選項
+app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤", "🎭 敘事醫學：互動小說"])
 st.sidebar.markdown("---")
 
 with st.sidebar.expander("⚠️ 免責聲明 "):
@@ -179,6 +180,7 @@ if app_mode == "🏠 系統首頁":
         4. **📈 趨勢追蹤**：輸入歷史追蹤數據，動態分析認知退化與腦萎縮變化趨勢。
         5. **📄 報告生成**：支援一鍵下載臨床級 PDF 醫師參考報告。
         6. **📊 數據實證**：公開完整測試集 ROC 曲線與 **5-Fold 交叉驗證**，實證模型科學效能。
+        7. **🎭 互動小說**：透過視覺小說體驗照護者的真實倫理決策。
         """)
         
         st.markdown("""
@@ -240,7 +242,8 @@ elif app_mode == "🤖 AI 衛教諮詢":
 請點擊左上角的 **「>」符號** 展開側邊欄選單，您會看到以下核心功能：
 * **🥗 生活雷達篩檢**：輸入作息與測驗，產出健康雷達圖與風險評估。
 * **🏥 臨床落點分析**：輸入 MRI 數據，將您的狀況投影至母群體中，查看腦萎縮落點與 MCI 分類。
-* **📊 數據驗證中心**：查看本系統雙森林模型之 5-Fold 交叉驗證與 ROC 曲線效能分析。"""
+* **📊 數據驗證中心**：查看本系統雙森林模型之 5-Fold 交叉驗證與 ROC 曲線效能分析。
+* **🎭 互動小說**：直接遊玩內建的醫學倫理視覺小說。"""
 
         elif re.search(r'(阿茲海默|失智|痴呆|什麼是|介紹)', q_lower):
             reply = """🧠 **疾病簡介：阿茲海默症 (AD)**
@@ -326,8 +329,7 @@ elif app_mode == "🥗 生活雷達篩檢":
                 
         elif st.session_state.cog_stage == 1:
             st.warning("【第一關：記憶銘記】 請在心中默念並努力記住以下五個詞彙：")
-            words_display = " &nbsp;&nbsp; ".join(st.session_state.target_words)
-            st.markdown(f"<h3 style='text-align: center; color: #d9534f;'>{words_display}</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h3 style='text-align: center; color: #d9534f;'>{' &nbsp;&nbsp; '.join(st.session_state.target_words)}</h3>", unsafe_allow_html=True)
             if st.button("我已經熟記，進入下一關"):
                 st.session_state.cog_stage = 2
                 st.rerun()
@@ -347,8 +349,7 @@ elif app_mode == "🥗 生活雷達篩檢":
                 
         elif st.session_state.cog_stage == 3:
             st.info("【第三關：計算力】 考驗您的連續執行能力。")
-            st.markdown("從 100 連續減去 7，**請減兩次**。請問最後的答案是多少？")
-            ans3 = st.radio("選擇答案：", ["(請選擇)", "83", "86", "79", "93"])
+            ans3 = st.radio("從 100 連續減去 7，**請減兩次**。請問最後的答案是多少？", ["(請選擇)", "83", "86", "79", "93"])
             if ans3 != "(請選擇)":
                 if st.button("確認計算"):
                     if ans3 == "86":
@@ -360,8 +361,7 @@ elif app_mode == "🥗 生活雷達篩檢":
                     
         elif st.session_state.cog_stage == 4:
             st.success("【第四關：延遲回憶】 最後一關！")
-            st.markdown("請在下列選項中，勾選出您在 **第一關** 記住的 5 個詞彙：")
-            selected = st.multiselect("請選擇 5 個詞彙：", st.session_state.recall_options)
+            selected = st.multiselect("請勾選出您在 **第一關** 記住的 5 個詞彙：", st.session_state.recall_options)
             if st.button("結算總分"):
                 correct = set(st.session_state.target_words)
                 user_ans = set(selected)
@@ -684,3 +684,135 @@ elif app_mode == "📈 縱向趨勢追蹤":
                     st.warning(f"⚠️ **系統預警：** 您的腦容量在兩年內萎縮了約 {drop_rate:.1%}，此速度高於正常老化生理預期，需密切追蹤退化現象。")
                 else:
                     st.success("🟢 **狀態穩定：** 您的腦容量變化符合正常生理老化預期。")
+
+
+# --- PAGE 7: 🎭 敘事醫學：互動小說 ---
+elif app_mode == "🎭 敘事醫學：互動小說":
+    st.title("🎭 What Day Is It Today?")
+    st.markdown("A short interactive visual novel about Alzheimer's disease.")
+    st.divider()
+
+    # 初始化進度
+    if 'vn_stage' not in st.session_state:
+        st.session_state.vn_stage = 1
+
+    # 自訂對話框樣式函式
+    def vn_dialogue(character, text):
+        if character == "Grandpa":
+            bg_color = "#f4f1ea"
+            text_color = "#5c4d42"
+        elif character == "Alex":
+            bg_color = "#e8f4fd"
+            text_color = "#0056b3"
+        else: # Narrator
+            bg_color = "#f8f9fa"
+            text_color = "#6c757d"
+
+        st.markdown(f"""
+        <div style='background-color: {bg_color}; padding: 15px; border-radius: 10px; margin-bottom: 10px;'>
+            <strong style='color: {text_color}; font-size: 1.1em;'>{character}</strong><br>
+            <span style='font-size: 1.05em; color: #333;'>{text}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if st.session_state.vn_stage == 1:
+        st.markdown("### 🌆 [BG1: Living Room]")
+        
+        # 👉 提示：把背景圖上傳後，把下面這行的 '#' 刪掉並換成你的檔名
+        # st.image("bg1_livingroom.png", use_container_width=True) 
+
+        vn_dialogue("Narrator", "(Grandpa is sitting on the couch, looking at a calendar.)")
+        
+        # 👉 提示：這裡示範如何左右排版立繪，上傳後把 '#' 刪掉即可
+        # col1, col2 = st.columns([1, 4])
+        # with col1:
+        #     st.image("grandpa_normal.png", width=120)
+        # with col2:
+        #     vn_dialogue("Grandpa", "Alex? What day is it today?")
+        
+        vn_dialogue("Grandpa", "Alex? What day is it today?")
+        vn_dialogue("Alex", "It's Wednesday, Grandpa.")
+        vn_dialogue("Grandpa", "Oh... Wednesday... <br><br>*(A few moments pass.)*<br><br>What day is it today?")
+        vn_dialogue("Alex", "You just asked me that.")
+        vn_dialogue("Grandpa", "Did I? That's strange. I don't remember asking.")
+        vn_dialogue("Alex", "Has this been happening often?")
+        vn_dialogue("Grandpa", "Lately, yes. Sometimes I forget things that happened only minutes ago. Yesterday, I spent twenty minutes looking for my glasses. Turns out they were on my face the whole time.")
+        vn_dialogue("Alex", "Maybe it's just normal aging?")
+        vn_dialogue("Grandpa", "That's what I thought too. But my doctor said it might be Alzheimer's disease.")
+        vn_dialogue("Alex", "Alzheimer's?")
+        vn_dialogue("Grandpa", "It's a disease that slowly damages the brain. People often have trouble remembering recent events. They may also lose track of dates, places, or ask the same questions repeatedly.")
+        vn_dialogue("Alex", "So it's different from ordinary forgetfulness?")
+        vn_dialogue("Grandpa", "Exactly. Most people eventually remember what they forgot. With Alzheimer's, sometimes you don't even realize you've forgotten something.")
+        vn_dialogue("Narrator", "(Grandpa looks out the window.)")
+        vn_dialogue("Grandpa", "To be honest... I'm scared.")
+        vn_dialogue("Alex", "Scared of what?")
+        vn_dialogue("Grandpa", "What if one day... I forget who you are?")
+
+        st.markdown("---")
+        st.markdown("#### 💡 Choice:")
+        
+        if st.button("A. \"Don't worry. I'll go to the doctor with you.\""):
+            st.session_state.vn_stage = 2
+            st.rerun()
+        if st.button("B. \"It's probably just old age.\""):
+            st.session_state.vn_stage = 3
+            st.rerun()
+        if st.button("C. \"You're overthinking it.\""):
+            st.session_state.vn_stage = 4
+            st.rerun()
+
+    elif st.session_state.vn_stage == 2:
+        st.success("🌟 GOOD ENDING")
+        vn_dialogue("Alex", "Don't worry. We'll face it together. Let's schedule another appointment and learn more about it.")
+        
+        st.markdown("### 📝 [BG2: Same room with medicine box, notes, and schedule board]")
+        # 👉 提示：Good Ending 的背景圖
+        # st.image("bg2_goodending.png", use_container_width=True)
+        
+        vn_dialogue("Narrator", "Several months later...")
+        vn_dialogue("Grandpa", "Today is Wednesday. I have a community activity this afternoon. Right?")
+        vn_dialogue("Alex", "That's right.")
+        vn_dialogue("Grandpa", "I still forget things sometimes. But at least I know I'm not facing this alone.")
+        
+        st.info("**Ending Message:** Early diagnosis and treatment cannot cure Alzheimer's disease, but they can help slow its progression and improve quality of life.")
+        if st.button("🔄 Restart"):
+            st.session_state.vn_stage = 1
+            st.rerun()
+
+    elif st.session_state.vn_stage == 3:
+        st.warning("😐 NORMAL ENDING")
+        vn_dialogue("Alex", "It's probably just old age. Don't worry too much.")
+        vn_dialogue("Grandpa", "I hope you're right.")
+        
+        st.markdown("### 🌆 [BG1: Living Room]")
+        # st.image("bg1_livingroom.png", use_container_width=True)
+        
+        vn_dialogue("Narrator", "One year later...")
+        vn_dialogue("Grandpa", "Alex, shouldn't you be in high school today?")
+        vn_dialogue("Alex", "Grandpa... I have already entered the workforce.")
+        vn_dialogue("Grandpa", "Oh... That's right. I forgot again.")
+        
+        st.info("**Ending Message:** Many people mistake Alzheimer's symptoms for normal aging, which can delay diagnosis and treatment.")
+        if st.button("🔄 Restart"):
+            st.session_state.vn_stage = 1
+            st.rerun()
+
+    elif st.session_state.vn_stage == 4:
+        st.error("🌧️ BAD ENDING")
+        vn_dialogue("Alex", "You're overthinking it. Everyone forgets things sometimes.")
+        vn_dialogue("Grandpa", "Maybe... You're right.")
+        
+        st.markdown("### 🌆 [BG1: Living Room]")
+        # st.image("bg1_livingroom.png", use_container_width=True)
+        
+        vn_dialogue("Narrator", "Several months later...")
+        vn_dialogue("Grandpa", "What day is it today?")
+        vn_dialogue("Alex", "You already asked that.")
+        vn_dialogue("Grandpa", "Oh. Sorry.")
+        vn_dialogue("Narrator", "(Grandpa lowers his head.)")
+        vn_dialogue("Grandpa", "Lately, I've stopped asking questions. I'm afraid of bothering people.")
+        
+        st.info("**Ending Message:** People with Alzheimer's disease are not forgetting on purpose. Patience, understanding, and support can make a meaningful difference.")
+        if st.button("🔄 Restart"):
+            st.session_state.vn_stage = 1
+            st.rerun()
