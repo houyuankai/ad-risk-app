@@ -692,127 +692,132 @@ elif app_mode == "🎭 敘事醫學：互動小說":
     st.markdown("A short interactive visual novel about Alzheimer's disease.")
     st.divider()
 
-    # 初始化進度
+    # 初始化遊戲引擎狀態 (場景與對話行數)
     if 'vn_stage' not in st.session_state:
-        st.session_state.vn_stage = 1
+        st.session_state.vn_stage = "scene1"
+        st.session_state.vn_line = 0
 
-    # 自訂對話框樣式函式
-    def vn_dialogue(character, text):
+    # 將劇本結構化為陣列，實現逐行讀取
+    script_data = {
+        "scene1": [
+            ("Narrator", "(Grandpa is sitting on the couch, looking at a calendar.)", "BG1: Living Room"),
+            ("Grandpa", "Alex? What day is it today?", "BG1: Living Room"),
+            ("Alex", "It's Wednesday, Grandpa.", "BG1: Living Room"),
+            ("Grandpa", "Oh... Wednesday...\n\n*(A few moments pass.)*\n\nWhat day is it today?", "BG1: Living Room"),
+            ("Alex", "You just asked me that.", "BG1: Living Room"),
+            ("Grandpa", "Did I? That's strange. I don't remember asking.", "BG1: Living Room"),
+            ("Alex", "Has this been happening often?", "BG1: Living Room"),
+            ("Grandpa", "Lately, yes. Sometimes I forget things that happened only minutes ago. Yesterday, I spent twenty minutes looking for my glasses. Turns out they were on my face the whole time.", "BG1: Living Room"),
+            ("Alex", "Maybe it's just normal aging?", "BG1: Living Room"),
+            ("Grandpa", "That's what I thought too. But my doctor said it might be Alzheimer's disease.", "BG1: Living Room"),
+            ("Alex", "Alzheimer's?", "BG1: Living Room"),
+            ("Grandpa", "It's a disease that slowly damages the brain. People often have trouble remembering recent events. They may also lose track of dates, places, or ask the same questions repeatedly.", "BG1: Living Room"),
+            ("Alex", "So it's different from ordinary forgetfulness?", "BG1: Living Room"),
+            ("Grandpa", "Exactly. Most people eventually remember what they forgot. With Alzheimer's, sometimes you don't even realize you've forgotten something.", "BG1: Living Room"),
+            ("Narrator", "(Grandpa looks out the window.)", "BG1: Living Room"),
+            ("Grandpa", "To be honest... I'm scared.", "BG1: Living Room"),
+            ("Alex", "Scared of what?", "BG1: Living Room"),
+            ("Grandpa", "What if one day... I forget who you are?", "BG1: Living Room")
+        ],
+        "good_end": [
+            ("Alex", "Don't worry. We'll face it together. Let's schedule another appointment and learn more about it.", "BG1: Living Room"),
+            ("Narrator", "Several months later...", "BG2: Room with medicine box and schedule"),
+            ("Grandpa", "Today is Wednesday. I have a community activity this afternoon. Right?", "BG2: Room with medicine box and schedule"),
+            ("Alex", "That's right.", "BG2: Room with medicine box and schedule"),
+            ("Grandpa", "I still forget things sometimes. But at least I know I'm not facing this alone.", "BG2: Room with medicine box and schedule"),
+            ("System", "🌟 **GOOD END**\nEarly diagnosis and treatment cannot cure Alzheimer's disease, but they can help slow its progression and improve quality of life.", "BG2: Room with medicine box and schedule")
+        ],
+        "normal_end": [
+            ("Alex", "It's probably just old age. Don't worry too much.", "BG1: Living Room"),
+            ("Grandpa", "I hope you're right.", "BG1: Living Room"),
+            ("Narrator", "One year later...", "BG1: Living Room"),
+            ("Grandpa", "Alex, shouldn't you be in high school today?", "BG1: Living Room"),
+            ("Alex", "Grandpa... I have already entered the workforce.", "BG1: Living Room"),
+            ("Grandpa", "Oh... That's right. I forgot again.", "BG1: Living Room"),
+            ("System", "😐 **NORMAL END**\nMany people mistake Alzheimer's symptoms for normal aging, which can delay diagnosis and treatment.", "BG1: Living Room")
+        ],
+        "bad_end": [
+            ("Alex", "You're overthinking it. Everyone forgets things sometimes.", "BG1: Living Room"),
+            ("Grandpa", "Maybe... You're right.", "BG1: Living Room"),
+            ("Narrator", "Several months later...", "BG1: Living Room"),
+            ("Grandpa", "What day is it today?", "BG1: Living Room"),
+            ("Alex", "You already asked that.", "BG1: Living Room"),
+            ("Grandpa", "Oh. Sorry.", "BG1: Living Room"),
+            ("Narrator", "(Grandpa lowers his head.)", "BG1: Living Room"),
+            ("Grandpa", "Lately, I've stopped asking questions. I'm afraid of bothering people.", "BG1: Living Room"),
+            ("System", "🌧️ **BAD END**\nPeople with Alzheimer's disease are not forgetting on purpose. Patience, understanding, and support can make a meaningful difference.", "BG1: Living Room")
+        ]
+    }
+
+    # 單行對話渲染器
+    def render_dialogue(character, text):
         if character == "Grandpa":
-            bg_color = "#f4f1ea"
-            text_color = "#5c4d42"
+            bg_color, text_color = "#f4f1ea", "#5c4d42"
         elif character == "Alex":
-            bg_color = "#e8f4fd"
-            text_color = "#0056b3"
+            bg_color, text_color = "#e8f4fd", "#0056b3"
+        elif character == "System":
+            bg_color, text_color = "#e6f9ec", "#155724"
         else: # Narrator
-            bg_color = "#f8f9fa"
-            text_color = "#6c757d"
+            bg_color, text_color = "#f8f9fa", "#6c757d"
 
         st.markdown(f"""
-        <div style='background-color: {bg_color}; padding: 15px; border-radius: 10px; margin-bottom: 10px;'>
-            <strong style='color: {text_color}; font-size: 1.1em;'>{character}</strong><br>
-            <span style='font-size: 1.05em; color: #333;'>{text}</span>
+        <div style='background-color: {bg_color}; padding: 20px; border-radius: 10px; border-left: 5px solid {text_color}; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+            <strong style='color: {text_color}; font-size: 1.2em;'>{character}</strong><br><br>
+            <span style='font-size: 1.1em; color: #333; white-space: pre-wrap;'>{text}</span>
         </div>
         """, unsafe_allow_html=True)
 
-    if st.session_state.vn_stage == 1:
-        st.markdown("### 🌆 [BG1: Living Room]")
-        
-        # 👉 提示：把背景圖上傳後，把下面這行的 '#' 刪掉並換成你的檔名
-        # st.image("bg1_livingroom.png", use_container_width=True) 
+    # 取得當前狀態
+    stage = st.session_state.vn_stage
+    line_idx = st.session_state.vn_line
 
-        vn_dialogue("Narrator", "(Grandpa is sitting on the couch, looking at a calendar.)")
-        
-        # 👉 提示：這裡示範如何左右排版立繪，上傳後把 '#' 刪掉即可
-        # col1, col2 = st.columns([1, 4])
-        # with col1:
-        #     st.image("grandpa_normal.png", width=120)
-        # with col2:
-        #     vn_dialogue("Grandpa", "Alex? What day is it today?")
-        
-        vn_dialogue("Grandpa", "Alex? What day is it today?")
-        vn_dialogue("Alex", "It's Wednesday, Grandpa.")
-        vn_dialogue("Grandpa", "Oh... Wednesday... <br><br>*(A few moments pass.)*<br><br>What day is it today?")
-        vn_dialogue("Alex", "You just asked me that.")
-        vn_dialogue("Grandpa", "Did I? That's strange. I don't remember asking.")
-        vn_dialogue("Alex", "Has this been happening often?")
-        vn_dialogue("Grandpa", "Lately, yes. Sometimes I forget things that happened only minutes ago. Yesterday, I spent twenty minutes looking for my glasses. Turns out they were on my face the whole time.")
-        vn_dialogue("Alex", "Maybe it's just normal aging?")
-        vn_dialogue("Grandpa", "That's what I thought too. But my doctor said it might be Alzheimer's disease.")
-        vn_dialogue("Alex", "Alzheimer's?")
-        vn_dialogue("Grandpa", "It's a disease that slowly damages the brain. People often have trouble remembering recent events. They may also lose track of dates, places, or ask the same questions repeatedly.")
-        vn_dialogue("Alex", "So it's different from ordinary forgetfulness?")
-        vn_dialogue("Grandpa", "Exactly. Most people eventually remember what they forgot. With Alzheimer's, sometimes you don't even realize you've forgotten something.")
-        vn_dialogue("Narrator", "(Grandpa looks out the window.)")
-        vn_dialogue("Grandpa", "To be honest... I'm scared.")
-        vn_dialogue("Alex", "Scared of what?")
-        vn_dialogue("Grandpa", "What if one day... I forget who you are?")
-
-        st.markdown("---")
-        st.markdown("#### 💡 Choice:")
-        
+    if stage == "choice":
+        st.markdown("### 💡 Choice: What do you say?")
         if st.button("A. \"Don't worry. I'll go to the doctor with you.\""):
-            st.session_state.vn_stage = 2
+            st.session_state.vn_stage = "good_end"
+            st.session_state.vn_line = 0
             st.rerun()
         if st.button("B. \"It's probably just old age.\""):
-            st.session_state.vn_stage = 3
+            st.session_state.vn_stage = "normal_end"
+            st.session_state.vn_line = 0
             st.rerun()
         if st.button("C. \"You're overthinking it.\""):
-            st.session_state.vn_stage = 4
+            st.session_state.vn_stage = "bad_end"
+            st.session_state.vn_line = 0
             st.rerun()
-
-    elif st.session_state.vn_stage == 2:
-        st.success("🌟 GOOD ENDING")
-        vn_dialogue("Alex", "Don't worry. We'll face it together. Let's schedule another appointment and learn more about it.")
+    else:
+        current_script = script_data[stage]
         
-        st.markdown("### 📝 [BG2: Same room with medicine box, notes, and schedule board]")
-        # 👉 提示：Good Ending 的背景圖
-        # st.image("bg2_goodending.png", use_container_width=True)
-        
-        vn_dialogue("Narrator", "Several months later...")
-        vn_dialogue("Grandpa", "Today is Wednesday. I have a community activity this afternoon. Right?")
-        vn_dialogue("Alex", "That's right.")
-        vn_dialogue("Grandpa", "I still forget things sometimes. But at least I know I'm not facing this alone.")
-        
-        st.info("**Ending Message:** Early diagnosis and treatment cannot cure Alzheimer's disease, but they can help slow its progression and improve quality of life.")
-        if st.button("🔄 Restart"):
-            st.session_state.vn_stage = 1
-            st.rerun()
-
-    elif st.session_state.vn_stage == 3:
-        st.warning("😐 NORMAL ENDING")
-        vn_dialogue("Alex", "It's probably just old age. Don't worry too much.")
-        vn_dialogue("Grandpa", "I hope you're right.")
-        
-        st.markdown("### 🌆 [BG1: Living Room]")
-        # st.image("bg1_livingroom.png", use_container_width=True)
-        
-        vn_dialogue("Narrator", "One year later...")
-        vn_dialogue("Grandpa", "Alex, shouldn't you be in high school today?")
-        vn_dialogue("Alex", "Grandpa... I have already entered the workforce.")
-        vn_dialogue("Grandpa", "Oh... That's right. I forgot again.")
-        
-        st.info("**Ending Message:** Many people mistake Alzheimer's symptoms for normal aging, which can delay diagnosis and treatment.")
-        if st.button("🔄 Restart"):
-            st.session_state.vn_stage = 1
-            st.rerun()
-
-    elif st.session_state.vn_stage == 4:
-        st.error("🌧️ BAD ENDING")
-        vn_dialogue("Alex", "You're overthinking it. Everyone forgets things sometimes.")
-        vn_dialogue("Grandpa", "Maybe... You're right.")
-        
-        st.markdown("### 🌆 [BG1: Living Room]")
-        # st.image("bg1_livingroom.png", use_container_width=True)
-        
-        vn_dialogue("Narrator", "Several months later...")
-        vn_dialogue("Grandpa", "What day is it today?")
-        vn_dialogue("Alex", "You already asked that.")
-        vn_dialogue("Grandpa", "Oh. Sorry.")
-        vn_dialogue("Narrator", "(Grandpa lowers his head.)")
-        vn_dialogue("Grandpa", "Lately, I've stopped asking questions. I'm afraid of bothering people.")
-        
-        st.info("**Ending Message:** People with Alzheimer's disease are not forgetting on purpose. Patience, understanding, and support can make a meaningful difference.")
-        if st.button("🔄 Restart"):
-            st.session_state.vn_stage = 1
-            st.rerun()
+        if line_idx < len(current_script):
+            char, text, bg = current_script[line_idx]
+            
+            # 顯示背景標籤 (未來可換成 st.image("你的背景.png"))
+            st.markdown(f"#### 📍 {bg}")
+            
+            # (未來放置立繪用區塊)
+            # col1, col2 = st.columns([1, 4])
+            # with col1:
+            #     if char == "Grandpa": st.image("grandpa_normal.png")
+            #     elif char == "Alex": st.image("alex_normal.png")
+            # with col2:
+            #     render_dialogue(char, text)
+            
+            render_dialogue(char, text)
+            
+            # Next 按鈕置右
+            cols = st.columns([5, 1])
+            with cols[1]:
+                if st.button("Next ➡", key=f"btn_{stage}_{line_idx}", use_container_width=True):
+                    st.session_state.vn_line += 1
+                    st.rerun()
+        else:
+            # 該片段播完後的邏輯
+            if stage == "scene1":
+                st.session_state.vn_stage = "choice"
+                st.rerun()
+            else: # 播完結局
+                st.divider()
+                if st.button("🔄 Restart Visual Novel", use_container_width=True):
+                    st.session_state.vn_stage = "scene1"
+                    st.session_state.vn_line = 0
+                    st.rerun()
