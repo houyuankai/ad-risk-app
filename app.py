@@ -684,3 +684,21 @@ elif app_mode == "📈 縱向趨勢追蹤":
                     st.warning(f"⚠️ **系統預警：** 您的腦容量在兩年內萎縮了約 {drop_rate:.1%}，此速度高於正常老化生理預期，需密切追蹤退化現象。")
                 else:
                     st.success("🟢 **狀態穩定：** 您的腦容量變化符合正常生理老化預期。")
+# --- PAGE 7: 🎭 敘事醫學：互動小說 (透過 iframe 嵌入 Ren'Py 遊戲) ---
+elif app_mode == "🎭 敘事醫學：互動小說":
+    st.title("🎭 What Day Is It Today?")
+    st.markdown("A short interactive visual novel about Alzheimer's disease.")
+    st.divider()
+    
+    # 你的 itch.io 遊戲網址
+    itch_game_url = "https://sussybaka-uwu.itch.io/wut-day-is-it-today"
+    
+    # 使用 Streamlit HTML 容器嵌入遊戲畫布
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    
+    # 依據標準 Ren'Py Web 導出比例，設定 iframe 的寬高
+    components.iframe(itch_game_url, width=960, height=600, scrolling=False)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.caption("💡 提示：若遊戲未正常載入（顯示拒絕連線），請至 itch.io 的 Edit game -> Distribute -> Embed game，將那串 `https://itch.io/embed-upload/...` 開頭的專屬嵌入網址替換到程式碼的 `itch_game_url` 中。")
