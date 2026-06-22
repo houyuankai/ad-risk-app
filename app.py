@@ -145,8 +145,8 @@ except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.pn
 
 st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v7.0</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
-# 🌟 在側邊欄新增了互動小說的導航選項
-app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤", "🎭 敘事醫學：互動小說"])
+# 🌟 已將名稱更新為 AZ 衛教小遊戲
+app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤", "🎭 AZ 衛教小遊戲"])
 st.sidebar.markdown("---")
 
 with st.sidebar.expander("⚠️ 免責聲明 "):
@@ -181,7 +181,7 @@ if app_mode == "🏠 系統首頁":
         4. **📈 趨勢追蹤**：輸入歷史追蹤數據，動態分析認知退化與腦萎縮變化趨勢。
         5. **📄 報告生成**：支援一鍵下載臨床級 PDF 醫師參考報告。
         6. **📊 數據實證**：公開完整測試集 ROC 曲線與 **5-Fold 交叉驗證**，實證模型科學效能。
-        7. **🎭 互動小說**：透過視覺小說體驗照護者的真實倫理決策。
+        7. **🎭 AZ 衛教小遊戲**：透過視覺小說體驗照護者的真實倫理決策。
         """)
         
         st.markdown("""
@@ -244,7 +244,7 @@ elif app_mode == "🤖 AI 衛教諮詢":
 * **🥗 生活雷達篩檢**：輸入作息與測驗，產出健康雷達圖與風險評估。
 * **🏥 臨床落點分析**：輸入 MRI 數據，將您的狀況投影至母群體中，查看腦萎縮落點與 MCI 分類。
 * **📊 數據驗證中心**：查看本系統雙森林模型之 5-Fold 交叉驗證與 ROC 曲線效能分析。
-* **🎭 互動小說**：直接遊玩內建的醫學倫理視覺小說。"""
+* **🎭 AZ 衛教小遊戲**：直接遊玩內建的醫學倫理視覺小說。"""
 
         elif re.search(r'(阿茲海默|失智|痴呆|什麼是|介紹)', q_lower):
             reply = """🧠 **疾病簡介：阿茲海默症 (AD)**
@@ -685,8 +685,10 @@ elif app_mode == "📈 縱向趨勢追蹤":
                     st.warning(f"⚠️ **系統預警：** 您的腦容量在兩年內萎縮了約 {drop_rate:.1%}，此速度高於正常老化生理預期，需密切追蹤退化現象。")
                 else:
                     st.success("🟢 **狀態穩定：** 您的腦容量變化符合正常生理老化預期。")
-# --- PAGE 7: 🎭 敘事醫學：互動小說 (透過 iframe 嵌入 Ren'Py 遊戲) ---
-elif app_mode == "🎭 敘事醫學：互動小說":
+
+
+# --- PAGE 7: 🎭 AZ 衛教小遊戲 (透過 iframe 嵌入 Ren'Py 遊戲) ---
+elif app_mode == "🎭 AZ 衛教小遊戲":
     st.title("🎭 What Day Is It Today?")
     st.markdown("A short interactive visual novel about Alzheimer's disease.")
     st.divider()
@@ -702,3 +704,20 @@ elif app_mode == "🎭 敘事醫學：互動小說":
     
     st.markdown("</div>", unsafe_allow_html=True)
     
+    # 👉 以下是新增的遊戲說明與版權標示區塊
+    st.markdown("""
+    ---
+    ### 📖 About the Game
+    You are spending a quiet afternoon in the living room with your Grandpa. When he looks up from the calendar and asks you, *"What day is it today?"* for the second time in just a few minutes, you realize something might be wrong. Is it just normal aging, or something more serious? 
+    
+    * **3 endings**
+    * **1 minute per run**
+    
+    This game is a final project for a Medical Humanities course, done in a few hours.
+    * **Cartoon character/animation:** Procreate
+    * **Background picture and music:** Pixabay
+    
+    If you have a chance to play it, I'd greatly appreciate any feedback you provide！❤️
+    
+    ★ *When running on a webpage, images and music may load with a delay.*
+    """)
