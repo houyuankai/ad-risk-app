@@ -722,7 +722,6 @@ elif app_mode == "🎭 AZ 衛教小遊戲":
     ★ *When running on a webpage, images and music may load with a delay.*
     """)
     st.markdown("### 📸 Game Previews")
-    st.markdown("### 📸 Game Previews")
     col_s1, col_s2, col_s3, col_s4 = st.columns(4)
     with col_s1:
         st.image(".devcontainer/menu.png", use_container_width=True)
