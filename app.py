@@ -692,7 +692,7 @@ elif app_mode == "🎭 敘事醫學：互動小說":
     st.divider()
     
     # 你的 itch.io 遊戲網址
-    itch_game_url = "https://sussybaka-uwu.itch.io/wut-day-is-it-today"
+    itch_game_url = "https://itch.io/embed-upload/18026709?color=e9c23b"
     
     # 使用 Streamlit HTML 容器嵌入遊戲畫布
     st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
