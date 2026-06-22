@@ -702,4 +702,3 @@ elif app_mode == "🎭 敘事醫學：互動小說":
     
     st.markdown("</div>", unsafe_allow_html=True)
     
-    st.caption("💡 提示：若遊戲未正常載入（顯示拒絕連線），請至 itch.io 的 Edit game -> Distribute -> Embed game，將那串 `https://itch.io/embed-upload/...` 開頭的專屬嵌入網址替換到程式碼的 `itch_game_url` 中。")
