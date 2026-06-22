@@ -13,6 +13,7 @@ from fpdf import FPDF
 import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_lottie import st_lottie
+import streamlit.components.v1 as components
 
 # ==========================================
 # 0. 建立讀取本地端 Lottie JSON 檔案的函式
