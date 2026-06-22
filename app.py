@@ -68,34 +68,51 @@ def create_pdf(user_name, risk_type, prob, factors):
     return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
-# 1. 頁面配置 & UI
+# 1. 頁面配置 & UI (🌟 更新為暖陽黃與深褐色系)
 # ==========================================
 st.set_page_config(page_title="AD Risk AI Pro", page_icon="🧠", layout="wide")
 
 st.markdown("""
     <style>
+    /* 主背景維持乾淨白色 */
     .main {background-color: #FFFFFF;}
-    h1, h2, h3 {color: #0056b3; font-family: 'Helvetica Neue', sans-serif;}
+    
+    /* 標題改為溫暖的深褐色 (呼應爺爺對話框文字色) */
+    h1, h2, h3 {color: #5c4d42; font-family: 'Helvetica Neue', sans-serif;}
+    
+    /* 按鈕改為溫暖的黃金色漸層 */
     .stButton>button {
-        color: white; background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white; 
+        background: linear-gradient(135deg, #e9c23b 0%, #c49a15 100%);
         border: none; border-radius: 8px; padding: 12px 24px; width: 100%; font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;
     }
     .stButton>button:hover {transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2);}
-    [data-testid="stSidebar"] {background-color: #F0F4F8; border-right: 1px solid #D1D9E6;}
-    .stChatMessage {background-color: #F8F9FA; border: 1px solid #E9ECEF; border-radius: 12px; padding: 15px; margin-bottom: 10px;}
-    [data-testid="stSidebar"] img {display: block; margin-left: auto; margin-right: auto; border-radius: 50%; border: 3px solid #007bff;}
     
+    /* 側邊欄改為暖白色，邊框改為米灰色 */
+    [data-testid="stSidebar"] {background-color: #fcfbf8; border-right: 1px solid #e8e3d8;}
+    
+    /* 側邊欄大頭貼圓框改為黃金色 */
+    [data-testid="stSidebar"] img {display: block; margin-left: auto; margin-right: auto; border-radius: 50%; border: 3px solid #e9c23b;}
+    
+    /* 聊天室對話框微調為極淺的暖灰 */
+    .stChatMessage {background-color: #faf9f6; border: 1px solid #e8e3d8; border-radius: 12px; padding: 15px; margin-bottom: 10px;}
+    
+    /* 提示與解說框改為淡黃色背景與黃色左邊框 */
     .explanation-box {
-        background-color: #e8f4fd; border-left: 5px solid #007bff; 
-        padding: 15px; border-radius: 5px; margin-top: 10px; font-size: 0.95em; color: #2c3e50;
+        background-color: #fffaf0; border-left: 5px solid #e9c23b; 
+        padding: 15px; border-radius: 5px; margin-top: 10px; font-size: 0.95em; color: #5c4d42;
     }
+    
+    /* 免責聲明維持警示黃 */
     .disclaimer-box {
         background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404;
         padding: 10px; border-radius: 5px; font-size: 0.85em; margin-top: 20px;
     }
+    
+    /* 參考文獻文字改為暖灰色 */
     .citation-text {
-        font-size: 0.8em; color: #6c757d; font-style: italic; margin-top: 5px;
+        font-size: 0.8em; color: #8a7b6c; font-style: italic; margin-top: 5px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -143,7 +160,8 @@ model_l, test_l, model_c, test_c, df_oasis, df_life_raw, X_l_full, y_l_full, X_c
 try: st.sidebar.image("brain_compare.png", width=150)
 except: st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3063/3063176.png", width=150)
 
-st.sidebar.markdown("<h2 style='text-align: center; color: #0056b3;'>AD-AI Pro v7.0</h2>", unsafe_allow_html=True)
+# 🌟 標題顏色改為深褐色
+st.sidebar.markdown("<h2 style='text-align: center; color: #5c4d42;'>AD-AI Pro v7.0</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 # 🌟 已將名稱更新為 AZ 衛教小遊戲
 app_mode = st.sidebar.radio("功能導航", ["🏠 系統首頁", "🤖 AI 衛教諮詢", "🥗 生活雷達篩檢", "🏥 臨床落點分析", "📊 數據驗證中心", "📈 縱向趨勢追蹤", "🎭 AZ 衛教小遊戲"])
