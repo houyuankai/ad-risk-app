@@ -724,7 +724,7 @@ elif app_mode == "🎭 AZ 衛教小遊戲":
     st.markdown("### 📸 Game Previews")
     col_s1, col_s2, col_s3 = st.columns(3)
     with col_s1:
-        st.image(".devcontainer/menu.png")
+        st.image("menu.png")
     with col_s2:
         st.image("screenshot1.png")
     with col_s3:
