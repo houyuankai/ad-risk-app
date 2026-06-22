@@ -68,7 +68,7 @@ def create_pdf(user_name, risk_type, prob, factors):
     return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
-# 1. 頁面配置 & UI (🌟 更新為暖陽黃與深褐色系)
+# 1. 頁面配置 & UI
 # ==========================================
 st.set_page_config(page_title="AD Risk AI Pro", page_icon="🧠", layout="wide")
 
